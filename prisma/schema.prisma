@@ -1,0 +1,73 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Category {
+  id        String    @id @default(cuid())
+  slug      String    @unique
+  name      String
+  tagline   String
+  emoji     String
+  sortOrder Int       @default(0)
+  products  Product[]
+}
+
+model Product {
+  id               String   @id @default(cuid())
+  slug             String   @unique
+  title            String
+  brand            String
+  shortDescription String
+  description      String
+  features         String
+  requirements     String   @default("")
+  price            Float
+  oldPrice         Float?
+  emoji            String
+  gradient         String
+  badge            String?
+  stock            Int
+  sold             Int      @default(0)
+  rating           Float    @default(4.7)
+  ratingCount      Int      @default(0)
+  sellerName       String
+  sellerRating     Float    @default(4.9)
+  sellerSales      Int      @default(100)
+  deliveryType     String   @default("INSTANT")
+  codePrefix       String   @default("DIGI")
+  instructions     String
+  categoryId       String
+  category         Category @relation(fields: [categoryId], references: [id])
+  reviews          Review[]
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  author    String
+  rating    Int
+  comment   String
+  verified  Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model Order {
+  id            String   @id @default(cuid())
+  shortId       String   @unique
+  buyerEmail    String
+  itemsJson     String
+  subtotal      Float
+  serviceFee    Float
+  total         Float
+  paymentMethod String
+  status        String   @default("COMPLETED")
+  createdAt     DateTime @default(now())
+}
