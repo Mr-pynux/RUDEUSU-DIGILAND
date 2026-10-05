@@ -5,10 +5,12 @@ import {
   ArrowLeft,
   BadgeDollarSign,
   Boxes,
+  Copy,
   KeyRound,
   Loader2,
   Lock,
   LogOut,
+  Mail,
   PackagePlus,
   Pencil,
   Plus,
@@ -16,6 +18,7 @@ import {
   Search,
   ShieldCheck,
   Trash2,
+  UserRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -65,6 +68,7 @@ export type AdminProduct = {
   stock: number;
   sold: number;
   deliveryType: string;
+  deliveryKind: string;
   codePrefix: string;
   instructions: string;
   categorySlug: string;
@@ -72,6 +76,8 @@ export type AdminProduct = {
   isActive: boolean;
   codesAvailable: number;
   codesSold: number;
+  accountsAvailable: number;
+  accountsSold: number;
 };
 
 export type AdminOrder = {
@@ -87,6 +93,17 @@ export type AdminOrder = {
   createdAt: string;
 };
 
+type AdminEmail = {
+  id: string;
+  to: string;
+  subject: string;
+  bodyHtml: string;
+  status: string;
+  error: string;
+  orderId: string | null;
+  createdAt: string;
+};
+
 type AdminData = {
   stats: {
     totalProducts: number;
@@ -94,9 +111,15 @@ type AdminData = {
     revenue: number;
     codesAvailable: number;
     codesSold: number;
+    accountsAvailable: number;
+    accountsSold: number;
+    emailsSent: number;
+    emailsQueued: number;
+    gmailConfigured: boolean;
   };
   products: AdminProduct[];
   orders: AdminOrder[];
+  emails: AdminEmail[];
 };
 
 export const ADMIN_GRADIENTS = [
@@ -227,8 +250,9 @@ export function AdminPanel() {
         <div className="pointer-events-none absolute bottom-1/4 right-1/4 h-72 w-72 rounded-full bg-fuchsia-500/15 blur-[110px]" />
         <div className="relative w-full max-w-sm rounded-3xl border border-white/10 bg-card/80 p-7 shadow-2xl backdrop-blur">
           <div className="mb-5 flex flex-col items-center gap-3 text-center">
-            <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 via-fuchsia-500 to-rose-400 shadow-lg shadow-fuchsia-500/25">
-              <ShieldCheck className="h-7 w-7 text-white" />
+            <span className="relative h-14 w-14 overflow-hidden rounded-2xl ring-2 ring-fuchsia-400/40 shadow-lg shadow-fuchsia-500/25">
+              { }
+              <img src="/logo.jpg" alt="RUDEUSU DIGILAND logo" className="h-full w-full object-cover" />
             </span>
             <div>
               <h1 className="text-xl font-extrabold text-white">{t("admin.loginTitle")}</h1>
@@ -285,8 +309,9 @@ export function AdminPanel() {
       {/* admin header */}
       <header className="sticky top-0 z-40 border-b border-white/10 bg-[oklch(0.13_0.02_305)]/90 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 lg:px-8">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 via-fuchsia-500 to-rose-400">
-            <ShieldCheck className="h-5 w-5 text-white" />
+          <span className="relative h-9 w-9 shrink-0 overflow-hidden rounded-xl ring-2 ring-fuchsia-400/40">
+            { }
+            <img src="/logo.jpg" alt="RUDEUSU DIGILAND logo" className="h-full w-full object-cover" />
           </span>
           <div className="min-w-0 flex-1">
             <p className="truncate text-[15px] font-extrabold leading-none text-white">
@@ -337,12 +362,13 @@ export function AdminPanel() {
 
       <main className="mx-auto max-w-7xl px-4 py-6 lg:px-8">
         {/* stats */}
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-7">
           {[
             { icon: Boxes, label: t("admin.statProducts"), value: stats ? `${stats.totalProducts}` : "—", tint: "text-violet-300" },
             { icon: BadgeDollarSign, label: t("admin.statRevenue"), value: stats ? formatMoney(stats.revenue) : "—", tint: "text-emerald-300" },
             { icon: KeyRound, label: t("admin.statCodesAvailable"), value: stats ? `${stats.codesAvailable}` : "—", tint: "text-fuchsia-300" },
-            { icon: KeyRound, label: t("admin.statCodesSold"), value: stats ? `${stats.codesSold}` : "—", tint: "text-amber-300" },
+            { icon: UserRound, label: t("admin.statAccountsAvailable"), value: stats ? `${stats.accountsAvailable}` : "—", tint: "text-cyan-300" },
+            { icon: Mail, label: stats?.gmailConfigured ? t("admin.emailSent") : t("admin.emailQueued"), value: stats ? `${stats.emailsSent + stats.emailsQueued}` : "—", tint: "text-amber-300" },
             { icon: ShoppingBagIcon, label: t("admin.statOrders"), value: stats ? `${stats.totalOrders}` : "—", tint: "text-rose-300" },
           ].map((s) => (
             <div key={s.label} className="rounded-2xl border border-white/10 bg-card/60 p-4">
@@ -359,14 +385,22 @@ export function AdminPanel() {
 
         {/* tabs */}
         <Tabs value={tab} onValueChange={setTab} className="mt-6">
-          <TabsList className="h-11 justify-start gap-1 rounded-2xl border border-white/10 bg-white/[0.04] p-1">
+          <TabsList className="nice-scroll flex h-11 w-full justify-start gap-1 overflow-x-auto rounded-2xl border border-white/10 bg-white/[0.04] p-1">
             <TabsTrigger value="products" className="rounded-xl px-4 data-[state=active]:bg-white/10">
               <Boxes className="me-1.5 inline h-3.5 w-3.5" />
               {t("admin.tabProducts")}
             </TabsTrigger>
             <TabsTrigger value="codes" className="rounded-xl px-4 data-[state=active]:bg-white/10">
               <KeyRound className="me-1.5 inline h-3.5 w-3.5" />
-              {t("admin.tabCodes")}
+              {t("admin.tabKeys")}
+            </TabsTrigger>
+            <TabsTrigger value="accounts" className="rounded-xl px-4 data-[state=active]:bg-white/10">
+              <UserRound className="me-1.5 inline h-3.5 w-3.5" />
+              {t("admin.tabAccounts")}
+            </TabsTrigger>
+            <TabsTrigger value="emails" className="rounded-xl px-4 data-[state=active]:bg-white/10">
+              <Mail className="me-1.5 inline h-3.5 w-3.5" />
+              {t("admin.tabEmails")}
             </TabsTrigger>
             <TabsTrigger value="orders" className="rounded-xl px-4 data-[state=active]:bg-white/10">
               <ShoppingBagIcon className="me-1.5 inline h-3.5 w-3.5" />
@@ -390,6 +424,10 @@ export function AdminPanel() {
         {tab === "codes" ? (
           <CodesTab data={data} onChanged={async () => { await loadData(); }} />
         ) : null}
+        {tab === "accounts" ? (
+          <AccountsTab data={data} onChanged={async () => { await loadData(); }} />
+        ) : null}
+        {tab === "emails" ? <EmailsTab data={data} /> : null}
         {tab === "orders" ? <OrdersTab data={data} /> : null}
       </main>
 
@@ -520,11 +558,12 @@ function ProductsTab({
         </div>
       ) : (
         <div className="nice-scroll max-h-[62vh] overflow-auto rounded-2xl border border-white/10">
-          <table className="w-full min-w-[860px] text-sm">
+          <table className="w-full min-w-[960px] text-sm">
             <thead className="sticky top-0 bg-[oklch(0.18_0.02_305)] text-start text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
                 <th className="px-4 py-3 text-start font-semibold">{t("admin.tableProduct")}</th>
                 <th className="px-4 py-3 text-start font-semibold">{t("admin.tableCategory")}</th>
+                <th className="px-4 py-3 text-start font-semibold">{t("admin.tableKind")}</th>
                 <th className="px-4 py-3 text-start font-semibold">{t("admin.tablePrice")}</th>
                 <th className="px-4 py-3 text-start font-semibold">{t("admin.tableStock")}</th>
                 <th className="px-4 py-3 text-start font-semibold">{t("admin.tableSold")}</th>
@@ -552,15 +591,31 @@ function ProductsTab({
                   <td className="px-4 py-3 text-muted-foreground">
                     {cat(p.categorySlug, p.categoryName)}
                   </td>
+                  <td className="px-4 py-3">
+                    <span
+                      className={`whitespace-nowrap rounded-full px-2 py-1 text-[11px] font-bold ${
+                        p.deliveryKind === "ACCOUNT"
+                          ? "bg-cyan-500/10 text-cyan-200"
+                          : "bg-fuchsia-500/10 text-fuchsia-200"
+                      }`}
+                    >
+                      {p.deliveryKind === "ACCOUNT" ? t("admin.kindBadgeAccount") : t("admin.kindBadgeKey")}
+                    </span>
+                  </td>
                   <td className="px-4 py-3 font-bold text-emerald-300" dir="ltr">
                     {formatMoney(p.price)}
                   </td>
                   <td className="px-4 py-3" dir="ltr">{p.stock}</td>
                   <td className="px-4 py-3 text-muted-foreground" dir="ltr">{p.sold}</td>
                   <td className="px-4 py-3">
-                    <span className="rounded-full bg-fuchsia-500/10 px-2 py-1 text-xs font-bold text-fuchsia-200" dir="ltr">
-                      {p.codesAvailable}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="rounded-full bg-fuchsia-500/10 px-2 py-1 text-xs font-bold text-fuchsia-200" dir="ltr">
+                        🔑 {p.codesAvailable}
+                      </span>
+                      <span className="rounded-full bg-cyan-500/10 px-2 py-1 text-xs font-bold text-cyan-200" dir="ltr">
+                        👤 {p.accountsAvailable}
+                      </span>
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     <Switch
@@ -638,7 +693,10 @@ function ProductDialog({
   const [instructions, setInstructions] = useState(edit?.instructions ?? "");
   const [codePrefix, setCodePrefix] = useState(edit?.codePrefix ?? "DIGI");
   const [deliveryType, setDeliveryType] = useState(edit?.deliveryType ?? "INSTANT");
+  const [deliveryKind, setDeliveryKind] = useState(edit?.deliveryKind ?? "KEY");
   const [codes, setCodes] = useState("");
+  const [accEmails, setAccEmails] = useState("");
+  const [accPasswords, setAccPasswords] = useState("");
   const [saving, setSaving] = useState(false);
 
   const save = async () => {
@@ -663,6 +721,7 @@ function ProductDialog({
             instructions,
             codePrefix,
             deliveryType,
+            deliveryKind,
           }),
         });
         const data = await res.json();
@@ -688,14 +747,20 @@ function ProductDialog({
             instructions,
             codePrefix,
             deliveryType,
+            deliveryKind,
             codes,
+            emails: accEmails,
+            passwords: accPasswords,
           }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error ?? "Create failed");
         toast({
           title: t("admin.productCreated"),
-          description: t("admin.productCreatedDesc", { n: data.codesAdded ?? 0 }),
+          description:
+            deliveryKind === "ACCOUNT"
+              ? t("admin.accountsAdded", { n: data.accountsAdded ?? 0 })
+              : t("admin.productCreatedDesc", { n: data.codesAdded ?? 0 }),
         });
       }
       await onSaved();
@@ -838,6 +903,47 @@ function ProductDialog({
             </div>
           </div>
 
+          {/* delivery kind picker — what the buyer receives */}
+          <div className="grid gap-1.5">
+            <Label className="text-sm">{t("admin.deliveryKind")}</Label>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => setDeliveryKind("KEY")}
+                className={`rounded-2xl border p-3 text-start transition ${
+                  deliveryKind === "KEY"
+                    ? "border-fuchsia-400/60 bg-fuchsia-500/10 ring-2 ring-fuchsia-400/40"
+                    : "border-white/10 bg-white/[0.03] hover:bg-white/[0.06]"
+                }`}
+              >
+                <p className="flex items-center gap-1.5 text-sm font-bold text-foreground">
+                  <KeyRound className="h-4 w-4 text-fuchsia-300" />
+                  {t("admin.kindKey")}
+                </p>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                  {t("admin.kindKeyDesc")}
+                </p>
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeliveryKind("ACCOUNT")}
+                className={`rounded-2xl border p-3 text-start transition ${
+                  deliveryKind === "ACCOUNT"
+                    ? "border-cyan-400/60 bg-cyan-500/10 ring-2 ring-cyan-400/40"
+                    : "border-white/10 bg-white/[0.03] hover:bg-white/[0.06]"
+                }`}
+              >
+                <p className="flex items-center gap-1.5 text-sm font-bold text-foreground">
+                  <UserRound className="h-4 w-4 text-cyan-300" />
+                  {t("admin.kindAccount")}
+                </p>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                  {t("admin.kindAccountDesc")}
+                </p>
+              </button>
+            </div>
+          </div>
+
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="grid gap-1.5">
               <Label className="text-sm">{t("seller.cover")}</Label>
@@ -925,7 +1031,7 @@ function ProductDialog({
             />
           </div>
 
-          {!edit ? (
+          {!edit && deliveryKind === "KEY" ? (
             <div className="rounded-2xl border border-emerald-400/25 bg-emerald-400/5 p-4">
               <Label htmlFor="admin-codes" className="text-sm text-emerald-200">
                 {t("admin.uploadedCodes")}
@@ -941,6 +1047,43 @@ function ProductDialog({
                 className="min-h-32 border-emerald-400/20 bg-black/20 font-mono text-xs"
                 dir="ltr"
               />
+            </div>
+          ) : null}
+
+          {!edit && deliveryKind === "ACCOUNT" ? (
+            <div className="rounded-2xl border border-cyan-400/25 bg-cyan-400/5 p-4">
+              <Label className="text-sm text-cyan-200">{t("admin.addAccounts")}</Label>
+              <p className="mb-2 mt-1 text-xs text-muted-foreground">
+                {t("admin.accountsPairHint")}
+              </p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid gap-1.5">
+                  <Label htmlFor="acc-emails" className="text-xs text-muted-foreground">
+                    {t("admin.gmailAddresses")}
+                  </Label>
+                  <Textarea
+                    id="acc-emails"
+                    value={accEmails}
+                    onChange={(e) => setAccEmails(e.target.value)}
+                    placeholder={t("admin.accountsPlaceholderEmails")}
+                    className="min-h-32 border-cyan-400/20 bg-black/20 font-mono text-xs"
+                    dir="ltr"
+                  />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="acc-passwords" className="text-xs text-muted-foreground">
+                    {t("admin.gmailPasswords")}
+                  </Label>
+                  <Textarea
+                    id="acc-passwords"
+                    value={accPasswords}
+                    onChange={(e) => setAccPasswords(e.target.value)}
+                    placeholder={t("admin.accountsPlaceholderPasswords")}
+                    className="min-h-32 border-cyan-400/20 bg-black/20 font-mono text-xs"
+                    dir="ltr"
+                  />
+                </div>
+              </div>
             </div>
           ) : null}
 
@@ -1208,8 +1351,365 @@ function CodesTab({ data, onChanged }: { data: AdminData | null; onChanged: () =
 }
 
 /* ------------------------------------------------------------------ */
-/* Orders tab                                                          */
+/* Gmail accounts tab                                                  */
 /* ------------------------------------------------------------------ */
+
+type AccountRow = {
+  id: string;
+  email: string;
+  password: string;
+  extra: string;
+  sold: boolean;
+  orderShortId: string | null;
+  createdAt: string;
+};
+
+function AccountsTab({ data, onChanged }: { data: AdminData | null; onChanged: () => Promise<void> }) {
+  const { toast } = useToast();
+  const { t } = useI18n();
+
+  const products = data?.products ?? [];
+  const [productId, setProductId] = useState<string>("");
+  const [accounts, setAccounts] = useState<AccountRow[]>([]);
+  const [loadingAccounts, setLoadingAccounts] = useState(false);
+  const [emailsBulk, setEmailsBulk] = useState("");
+  const [passwordsBulk, setPasswordsBulk] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const selected = products.find((p) => p.id === productId) ?? null;
+
+  useEffect(() => {
+    if (!productId && products.length > 0) {
+      setProductId(products[0].id);
+    }
+  }, [products, productId]);
+
+  useEffect(() => {
+    if (!productId) return;
+    setLoadingAccounts(true);
+    setAccounts([]);
+    adminFetch(`/api/admin/products/${productId}/accounts`)
+      .then((r) => r.json())
+      .then((d) => setAccounts(d.accounts ?? []))
+      .catch(() => setAccounts([]))
+      .finally(() => setLoadingAccounts(false));
+  }, [productId, data]);
+
+  const addAccounts = async () => {
+    if (adding || !productId || (!emailsBulk.trim() && !passwordsBulk.trim())) return;
+    setAdding(true);
+    try {
+      const res = await adminFetch(`/api/admin/products/${productId}/accounts`, {
+        method: "POST",
+        body: JSON.stringify({ emails: emailsBulk, passwords: passwordsBulk }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error ?? "Could not add accounts");
+      toast({
+        title: t("admin.accountsAdded", { n: d.added ?? 0 }),
+        description: d.skipped > 0 ? t("admin.codesDuplicate", { n: d.skipped }) : undefined,
+      });
+      setEmailsBulk("");
+      setPasswordsBulk("");
+      const listRes = await adminFetch(`/api/admin/products/${productId}/accounts`);
+      const listData = await listRes.json();
+      setAccounts(listData.accounts ?? []);
+      await onChanged();
+    } catch (e) {
+      toast({
+        title: "Failed to add accounts",
+        description: e instanceof Error ? e.message : "",
+        variant: "destructive",
+      });
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const deleteAccount = async (account: AccountRow) => {
+    if (deletingId) return;
+    setDeletingId(account.id);
+    try {
+      const res = await adminFetch(`/api/admin/accounts/${account.id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const d = await res.json();
+        throw new Error(d.error ?? "Delete failed");
+      }
+      setAccounts((prev) => prev.filter((a) => a.id !== account.id));
+      await onChanged();
+    } catch (e) {
+      toast({
+        title: "Delete failed",
+        description: e instanceof Error ? e.message : "",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  return (
+    <section className="mt-4 grid gap-4 lg:grid-cols-[380px_1fr]">
+      {/* left: picker + bulk add */}
+      <div className="space-y-4">
+        <div className="rounded-2xl border border-white/10 bg-card/60 p-4">
+          <Label className="text-sm font-bold">{t("admin.accountsFor")}</Label>
+          <Select value={productId} onValueChange={setProductId}>
+            <SelectTrigger className="mt-2 h-11 border-white/10 bg-white/5">
+              <SelectValue placeholder={t("admin.pickProduct")} />
+            </SelectTrigger>
+            <SelectContent>
+              {products.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.emoji} {p.title.slice(0, 40)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {selected ? (
+            <div className="mt-3 flex gap-2 text-center">
+              <div className="flex-1 rounded-xl border border-cyan-400/20 bg-cyan-500/10 p-2.5">
+                <p className="text-lg font-extrabold text-cyan-200" dir="ltr">
+                  {selected.accountsAvailable}
+                </p>
+                <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                  {t("admin.available")}
+                </p>
+              </div>
+              <div className="flex-1 rounded-xl border border-emerald-400/20 bg-emerald-500/10 p-2.5">
+                <p className="text-lg font-extrabold text-emerald-200" dir="ltr">
+                  {selected.accountsSold}
+                </p>
+                <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                  {t("admin.soldCode")}
+                </p>
+              </div>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="rounded-2xl border border-cyan-400/25 bg-cyan-400/5 p-4">
+          <Label className="text-sm text-cyan-200">{t("admin.addAccounts")}</Label>
+          <p className="mb-2 mt-1 text-xs leading-relaxed text-muted-foreground">
+            {t("admin.accountsPairHint")}
+          </p>
+          <div className="space-y-2.5">
+            <Textarea
+              value={emailsBulk}
+              onChange={(e) => setEmailsBulk(e.target.value)}
+              placeholder={t("admin.accountsPlaceholderEmails")}
+              className="min-h-24 border-cyan-400/20 bg-black/20 font-mono text-xs"
+              dir="ltr"
+            />
+            <Textarea
+              value={passwordsBulk}
+              onChange={(e) => setPasswordsBulk(e.target.value)}
+              placeholder={t("admin.accountsPlaceholderPasswords")}
+              className="min-h-24 border-cyan-400/20 bg-black/20 font-mono text-xs"
+              dir="ltr"
+            />
+          </div>
+          <Button
+            onClick={addAccounts}
+            disabled={adding || !productId}
+            className="mt-3 h-10 w-full gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-500 font-bold text-white"
+          >
+            {adding ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" /> {t("admin.addingAccounts")}
+              </>
+            ) : (
+              <>
+                <Plus className="h-4 w-4" /> {t("admin.addAccounts")}
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+
+      {/* right: accounts list */}
+      <div className="rounded-2xl border border-white/10 bg-card/60">
+        <div className="border-b border-white/10 px-4 py-3">
+          <p className="text-sm font-bold text-foreground">
+            {selected ? selected.title : t("admin.pickProduct")}
+          </p>
+          {selected ? (
+            <p className="text-xs text-muted-foreground">
+              {t("admin.availableAccounts")}: {selected.accountsAvailable} · {t("admin.soldAccounts")}:{" "}
+              {selected.accountsSold}
+            </p>
+          ) : null}
+        </div>
+        <div className="nice-scroll max-h-[56vh] overflow-y-auto p-3">
+          {loadingAccounts ? (
+            <div className="flex justify-center py-10">
+              <Loader2 className="h-5 w-5 animate-spin text-cyan-300" />
+            </div>
+          ) : accounts.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-white/15 p-8 text-center">
+              <p className="text-2xl">👤</p>
+              <p className="mt-2 text-sm text-muted-foreground">{t("admin.noAccounts")}</p>
+            </div>
+          ) : (
+            <ul className="space-y-1.5">
+              {accounts.map((a) => (
+                <li
+                  key={a.id}
+                  className="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2"
+                >
+                  <div className="min-w-0">
+                    <code className="block truncate font-mono text-[13px] font-semibold text-foreground" dir="ltr">
+                      {a.email}
+                    </code>
+                    <code className="block truncate font-mono text-[11px] text-muted-foreground" dir="ltr">
+                      {a.password}
+                    </code>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <CopyButtonSmall value={`${a.email} / ${a.password}`} label={t("admin.copyAccount")} />
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+                        a.sold
+                          ? "bg-emerald-500/15 text-emerald-300"
+                          : "bg-amber-500/15 text-amber-300"
+                      }`}
+                    >
+                      {a.sold ? t("admin.soldCode") : t("admin.available")}
+                    </span>
+                    {!a.sold ? (
+                      <button
+                        onClick={() => deleteAccount(a)}
+                        disabled={deletingId === a.id}
+                        className="rounded-lg p-1.5 text-rose-300 transition hover:bg-rose-500/15 disabled:opacity-40"
+                        aria-label={t("admin.deleteAccount")}
+                        title={t("admin.deleteAccount")}
+                      >
+                        {deletingId === a.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+                    ) : null}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function CopyButtonSmall({ value, label }: { value: string; label: string }) {
+  return (
+    <button
+      onClick={() => {
+        navigator.clipboard?.writeText(value).catch(() => {});
+      }}
+      className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-white/10 hover:text-foreground"
+      aria-label={label}
+      title={label}
+    >
+      <Copy className="h-3.5 w-3.5" />
+    </button>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Gmail delivery (email log) tab                                      */
+/* ------------------------------------------------------------------ */
+
+function EmailsTab({ data }: { data: AdminData | null }) {
+  const { t } = useI18n();
+  const emails = data?.emails ?? [];
+  const gmailConfigured = data?.stats.gmailConfigured ?? false;
+
+  return (
+    <section className="mt-4 space-y-4">
+      {/* Gmail setup banner */}
+      <div className="rounded-2xl border border-amber-400/25 bg-amber-400/5 p-4">
+        <p className="flex items-center gap-2 text-sm font-bold text-amber-200">
+          <Mail className="h-4 w-4" />
+          {t("admin.gmailHowTitle")}
+          <span
+            className={`ms-auto rounded-full px-2.5 py-1 text-[11px] font-bold uppercase ${
+              gmailConfigured
+                ? "bg-emerald-500/15 text-emerald-300"
+                : "bg-amber-500/15 text-amber-300"
+            }`}
+          >
+            {gmailConfigured ? t("admin.emailSent") : t("admin.emailQueued")}
+          </span>
+        </p>
+        <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{t("admin.gmailHowText")}</p>
+        <pre className="mt-2 overflow-x-auto rounded-xl bg-black/30 p-3 font-mono text-[11px] text-amber-100" dir="ltr">
+{`GMAIL_USER=yourshop@gmail.com
+GMAIL_APP_PASSWORD=abcd efgh ijkl mnop`}
+        </pre>
+      </div>
+
+      <p className="text-xs text-muted-foreground">{t("admin.emailsDesc")}</p>
+
+      {emails.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-white/15 py-16 text-center">
+          <p className="text-3xl">📧</p>
+          <p className="mt-2 text-sm text-muted-foreground">{t("admin.noEmails")}</p>
+        </div>
+      ) : (
+        <div className="space-y-2.5">
+          {emails.map((e) => (
+            <div key={e.id} className="rounded-2xl border border-white/10 bg-card/60 p-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase ${
+                    e.status === "SENT"
+                      ? "bg-emerald-500/15 text-emerald-300"
+                      : e.status === "FAILED"
+                        ? "bg-rose-500/15 text-rose-300"
+                        : "bg-amber-500/15 text-amber-300"
+                  }`}
+                >
+                  {e.status === "SENT"
+                    ? t("admin.emailSent")
+                    : e.status === "FAILED"
+                      ? t("admin.emailFailed")
+                      : t("admin.emailQueued")}
+                </span>
+                <span className="rounded-full bg-violet-500/15 px-2.5 py-1 text-xs font-semibold text-violet-200" dir="ltr">
+                  {e.to}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground" dir="ltr">
+                  {e.subject}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {new Date(e.createdAt).toLocaleString()}
+                </span>
+              </div>
+              {e.error ? (
+                <p className="mt-2 rounded-lg bg-rose-500/10 px-3 py-2 text-xs text-rose-300" dir="ltr">
+                  {e.error}
+                </p>
+              ) : null}
+              <details className="mt-2">
+                <summary className="cursor-pointer text-xs font-bold uppercase tracking-wide text-fuchsia-300">
+                  {t("admin.emailView")}
+                </summary>
+                <div
+                  className="nice-scroll mt-2 max-h-96 overflow-auto rounded-xl bg-white p-3"
+                  dangerouslySetInnerHTML={{ __html: e.bodyHtml }}
+                />
+              </details>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
 
 function OrdersTab({ data }: { data: AdminData | null }) {
   const { t } = useI18n();
@@ -1269,6 +1769,19 @@ function OrdersTab({ data }: { data: AdminData | null }) {
                     </code>
                   ))}
                 </div>
+                {item.accounts && item.accounts.length > 0 ? (
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    {item.accounts.map((acc, i) => (
+                      <code
+                        key={`${acc.email}-${i}`}
+                        className="rounded-md border border-cyan-400/15 bg-cyan-400/5 px-2 py-1 font-mono text-[11px] font-bold text-cyan-300"
+                        dir="ltr"
+                      >
+                        {acc.email} / {acc.password}
+                      </code>
+                    ))}
+                  </div>
+                ) : null}
               </div>
             ))}
           </div>

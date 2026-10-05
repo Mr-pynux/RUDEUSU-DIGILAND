@@ -32,12 +32,18 @@ export function Footer() {
     <footer className="mt-auto border-t border-white/10 bg-black/25">
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:grid-cols-2 lg:grid-cols-4 lg:px-8">
         <div>
-          <p className="text-lg font-extrabold tracking-tight text-white">
-            RUDEUSU{" "}
-            <span className="bg-gradient-to-r from-violet-300 via-fuchsia-300 to-rose-300 bg-clip-text text-transparent">
-              DIGILAND
+          <div className="flex items-center gap-2.5">
+            <span className="h-10 w-10 shrink-0 overflow-hidden rounded-xl ring-2 ring-fuchsia-400/40">
+              { }
+              <img src="/logo.jpg" alt="RUDEUSU DIGILAND logo" className="h-full w-full object-cover" />
             </span>
-          </p>
+            <p className="text-lg font-extrabold tracking-tight text-white">
+              RUDEUSU{" "}
+              <span className="bg-gradient-to-r from-violet-300 via-fuchsia-300 to-rose-300 bg-clip-text text-transparent">
+                DIGILAND
+              </span>
+            </p>
+          </div>
           <p className="mt-3 max-w-xs text-sm leading-relaxed text-muted-foreground">
             {t("footer.about")}
           </p>

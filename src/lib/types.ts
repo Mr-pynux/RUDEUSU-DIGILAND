@@ -57,6 +57,12 @@ export type CatalogResponse = {
   };
 };
 
+export type DeliveredAccount = {
+  email: string;
+  password: string;
+  extra?: string;
+};
+
 export type DeliveredItem = {
   slug: string;
   title: string;
@@ -64,7 +70,9 @@ export type DeliveredItem = {
   gradient: string;
   quantity: number;
   unitPrice: number;
+  kind: "KEY" | "ACCOUNT";
   codes: string[];
+  accounts?: DeliveredAccount[];
   instructions: string;
   sellerName: string;
 };

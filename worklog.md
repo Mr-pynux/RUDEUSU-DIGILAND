@@ -37,3 +37,26 @@ Stage Summary:
 - Verified via agent-browser: EN storefront, Arabic RTL storefront + Arabic admin, purchase flow delivers uploaded pool codes in order (GPT-9KWM then GPT-XQ47), admin login with password, create product with 3 codes (live in catalog instantly, codes tab shows 3 available), bulk add codes with duplicate skip (added 2, skipped 1), orders tab shows buyer + delivered codes, 401 without/wrong admin key, mobile 390px layout, no console errors, lint + tsc clean
 - Admin credentials: password "rudeusu2026" (src/lib/admin.ts), token auto-issued on login
 - Dev server note: had to kill stale next-server chain (old Prisma client without Code model); restarted via .zscripts/dev.sh
+
+---
+Task ID: 3
+Agent: main (Super Z)
+Task: Change admin password, replace logo with uploaded image, add separate admin panels for product keys + Gmail accounts with email delivery after payment
+
+Work Log:
+- Replaced logo everywhere with uploaded /upload/images.jfif (copied to public/logo.jpg): header, footer, admin login gate, admin header, favicon (layout.tsx icons)
+- Changed admin password to "G''ds3FJFRVGF" in src/lib/admin.ts and rotated ADMIN_TOKEN (rudeusu-admin-ok-2026-v3) to invalidate old sessions
+- Prisma: added Account model (Gmail/password inventory, unique email per product, sold flag + orderShortId), EmailLog model (to/subject/bodyHtml/status SENT|QUEUED|FAILED), Product.deliveryKind field (KEY | ACCOUNT); db push + generate
+- Created src/lib/mailer.ts: nodemailer Gmail SMTP sender (env GMAIL_USER + GMAIL_APP_PASSWORD), branded HTML email builder, queues to EmailLog when Gmail not configured
+- Checkout API: ACCOUNT products consume pool accounts oldest-first (fallback generated demo credentials), KEY products consume pool codes as before; after payment sends delivery email via sendDeliveryEmail (never blocks order)
+- Admin APIs: POST/GET /api/admin/products/[id]/accounts (paired emails+passwords bulk add with dedupe + email validation, accepts email----password combined lines), DELETE /api/admin/accounts/[id] (unsold only), /api/admin/data now returns accountsAvailable/Sold per product + global, deliveryKind, emails log + gmailConfigured flag; products POST/PATCH accept deliveryKind + accounts at creation
+- Admin panel: 5 tabs now (Products / Product keys / Gmail accounts / Gmail delivery / Orders), 6 stat cards (added accounts available + email queue status), products table got DELIVERY kind badge column + accounts count chip, ProductDialog got "What the buyer receives" picker (Activation key vs Gmail account) switching between codes textarea and paired Gmail/password textareas, new AccountsTab (product picker, paired textareas bulk add, email/password list with copy + delete), new EmailsTab (Gmail setup banner with env var instructions, delivery log with status badges + full HTML email preview), OrdersTab shows delivered accounts
+- Storefront: success dialog + my-orders dialog render Gmail accounts (email + password, copy button, security note) for ACCOUNT items
+- i18n: added ~45 EN + AR keys (tabs, kind picker, accounts UI, email log, success.copyAccount, success.accountNote)
+- Seeded demo accounts via scripts/seed-accounts.ts: Gemini Pro x4, ChatGPT Plus x3, Claude Pro x2 (products switched to deliveryKind ACCOUNT)
+- Verified via agent-browser: logo in header/admin/footer, login with G''ds3FJFRVGF, 5 tabs render, Gemini accounts tab lists 4 seeded accounts, purchased Gemini Pro -> success screen shows rudeusu.gem01@gmail.com / Gm#92kQzLx4, Gmail delivery tab shows QUEUED email for buyer.test@gmail.com with viewable branded HTML, Orders tab shows delivered account, Arabic RTL admin (all tabs translated), product dialog kind picker switches inputs, mobile 390px ok, no console errors, tsc + eslint clean
+
+Stage Summary:
+- Admin credentials: password G''ds3FJFRVGF (entry: shield button in header or /#admin, token auto-issued)
+- Gmail real sending: set GMAIL_USER + GMAIL_APP_PASSWORD env vars (Google App Password) and restart; until then emails are QUEUED and viewable in admin Gmail delivery tab
+- Key files: src/lib/mailer.ts, src/app/api/admin/products/[id]/accounts/route.ts, src/app/api/admin/accounts/[id]/route.ts, src/components/admin/admin-panel.tsx, prisma/schema.prisma

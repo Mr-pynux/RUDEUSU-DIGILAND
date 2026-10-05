@@ -6,8 +6,8 @@
  * Verify: admin API routes check the `x-admin-key` header.
  */
 
-export const ADMIN_PASSWORD = "rudeusu2026";
-export const ADMIN_TOKEN = "rudeusu-admin-ok-2026";
+export const ADMIN_PASSWORD = "G''ds3FJFRVGF";
+export const ADMIN_TOKEN = "rudeusu-admin-ok-2026-v3";
 
 export function isAdminRequest(req: Request): boolean {
   const key = req.headers.get("x-admin-key") ?? "";

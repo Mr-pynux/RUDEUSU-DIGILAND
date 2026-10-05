@@ -38,6 +38,9 @@ export async function PATCH(req: Request, ctx: RouteCtx) {
     if (body.deliveryType !== undefined) {
       data.deliveryType = String(body.deliveryType) === "MANUAL" ? "MANUAL" : "INSTANT";
     }
+    if (body.deliveryKind !== undefined) {
+      data.deliveryKind = String(body.deliveryKind) === "ACCOUNT" ? "ACCOUNT" : "KEY";
+    }
     if (body.codePrefix !== undefined) {
       data.codePrefix =
         String(body.codePrefix).replace(/[^A-Za-z0-9]/g, "").toUpperCase().slice(0, 6) || "DIGI";

@@ -399,21 +399,48 @@ export function SuccessDialog() {
                     </div>
                   </div>
                   <div className="mt-3 space-y-2">
-                    {item.codes.map((code, i) => (
-                      <div
-                        key={`${code}-${i}`}
-                        className="flex items-center justify-between gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/5 px-3 py-2"
-                      >
-                        <code
-                          className="truncate font-mono text-sm font-bold tracking-wider text-emerald-300"
-                          dir="ltr"
+                    {item.kind === "ACCOUNT" && item.accounts && item.accounts.length > 0 ? (
+                      item.accounts.map((acc, i) => (
+                        <div
+                          key={`${acc.email}-${i}`}
+                          className="rounded-xl border border-cyan-400/20 bg-cyan-400/5 px-3 py-2"
                         >
-                          {code}
-                        </code>
-                        <CopyButton value={code} label={t("success.copyCode", { n: i + 1 })} />
-                      </div>
-                    ))}
+                          <div className="flex items-center justify-between gap-2">
+                            <code className="truncate font-mono text-sm font-bold text-cyan-300" dir="ltr">
+                              {acc.email}
+                            </code>
+                            <CopyButton
+                              value={`${acc.email} / ${acc.password}`}
+                              label={t("success.copyAccount", { n: i + 1 })}
+                            />
+                          </div>
+                          <code className="mt-1 block truncate font-mono text-xs text-cyan-200/80" dir="ltr">
+                            {acc.password}
+                          </code>
+                        </div>
+                      ))
+                    ) : (
+                      item.codes.map((code, i) => (
+                        <div
+                          key={`${code}-${i}`}
+                          className="flex items-center justify-between gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/5 px-3 py-2"
+                        >
+                          <code
+                            className="truncate font-mono text-sm font-bold tracking-wider text-emerald-300"
+                            dir="ltr"
+                          >
+                            {code}
+                          </code>
+                          <CopyButton value={code} label={t("success.copyCode", { n: i + 1 })} />
+                        </div>
+                      ))
+                    )}
                   </div>
+                  {item.kind === "ACCOUNT" ? (
+                    <p className="mt-2 rounded-lg border border-cyan-400/15 bg-cyan-400/5 px-3 py-2 text-xs text-cyan-200/90">
+                      ℹ️ {t("success.accountNote")}
+                    </p>
+                  ) : null}
                   {item.instructions ? (
                     <details className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
                       <summary className="cursor-pointer text-xs font-bold uppercase tracking-wide text-fuchsia-300">
@@ -553,20 +580,38 @@ export function OrdersDialog() {
                   <p className="text-[13px] font-semibold text-foreground/90">
                     {item.emoji} {item.title} ×{item.quantity}
                   </p>
-                  {item.codes.map((code, i) => (
-                    <div
-                      key={`${o.id}-${code}-${i}`}
-                      className="flex items-center justify-between gap-2 rounded-lg border border-emerald-400/15 bg-emerald-400/5 px-2.5 py-1.5"
-                    >
-                      <code
-                        className="truncate font-mono text-xs font-bold text-emerald-300"
-                        dir="ltr"
-                      >
-                        {code}
-                      </code>
-                      <CopyButton value={code} />
-                    </div>
-                  ))}
+                  {item.codes && item.codes.length > 0
+                    ? item.codes.map((code, i) => (
+                        <div
+                          key={`${o.id}-${code}-${i}`}
+                          className="flex items-center justify-between gap-2 rounded-lg border border-emerald-400/15 bg-emerald-400/5 px-2.5 py-1.5"
+                        >
+                          <code
+                            className="truncate font-mono text-xs font-bold text-emerald-300"
+                            dir="ltr"
+                          >
+                            {code}
+                          </code>
+                          <CopyButton value={code} />
+                        </div>
+                      ))
+                    : null}
+                  {item.accounts && item.accounts.length > 0
+                    ? item.accounts.map((acc, i) => (
+                        <div
+                          key={`${o.id}-${acc.email}-${i}`}
+                          className="flex items-center justify-between gap-2 rounded-lg border border-cyan-400/15 bg-cyan-400/5 px-2.5 py-1.5"
+                        >
+                          <code
+                            className="truncate font-mono text-xs font-bold text-cyan-300"
+                            dir="ltr"
+                          >
+                            {acc.email} / {acc.password}
+                          </code>
+                          <CopyButton value={`${acc.email} / ${acc.password}`} />
+                        </div>
+                      ))
+                    : null}
                 </div>
               ))}
               <div className="mt-3 flex justify-end gap-1 border-t border-white/10 pt-2 text-sm">

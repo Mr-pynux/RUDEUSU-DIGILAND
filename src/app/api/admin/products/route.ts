@@ -50,6 +50,7 @@ export async function POST(req: Request) {
       ? String(body?.gradient)
       : GRADIENTS[Math.floor(Math.random() * GRADIENTS.length)];
     const deliveryType: string = String(body?.deliveryType ?? "INSTANT") === "MANUAL" ? "MANUAL" : "INSTANT";
+    const deliveryKind: string = String(body?.deliveryKind ?? "KEY") === "ACCOUNT" ? "ACCOUNT" : "KEY";
     const codePrefix: string =
       String(body?.codePrefix ?? "").replace(/[^A-Za-z0-9]/g, "").toUpperCase().slice(0, 6) || "DIGI";
     const sellerName: string = String(body?.sellerName ?? "RUDEUSU Official").trim().slice(0, 40) || "RUDEUSU Official";
@@ -112,6 +113,7 @@ export async function POST(req: Request) {
         sellerRating: 5.0,
         sellerSales: 0,
         deliveryType,
+        deliveryKind,
         codePrefix,
         instructions:
           instructions ||
@@ -126,9 +128,38 @@ export async function POST(req: Request) {
       });
     }
 
+    // Optional Gmail accounts uploaded at creation (paired lists or combined lines)
+    let accountsAdded = 0;
+    if (deliveryKind === "ACCOUNT") {
+      const emails: string[] = Array.isArray(body?.emails)
+        ? body.emails.map((e: unknown) => String(e).trim().toLowerCase())
+        : String(body?.emails ?? "").split(/\r?\n/).map((l) => l.trim().toLowerCase());
+      const passwords: string[] = Array.isArray(body?.passwords)
+        ? body.passwords.map((p: unknown) => String(p).trim())
+        : String(body?.passwords ?? "").split(/\r?\n/).map((l) => l.trim());
+      const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+      const seenEmail = new Set<string>();
+      const rows: { email: string; password: string }[] = [];
+      for (let i = 0; i < Math.max(emails.length, passwords.length); i++) {
+        const email = (emails[i] ?? "").trim();
+        const password = (passwords[i] ?? "").trim();
+        if (!email || !password) continue;
+        if (!EMAIL_RE.test(email) || seenEmail.has(email)) continue;
+        seenEmail.add(email);
+        rows.push({ email, password });
+      }
+      if (rows.length > 0) {
+        await db.account.createMany({
+          data: rows.map((r) => ({ ...r, productId: product.id })),
+        });
+        accountsAdded = rows.length;
+      }
+    }
+
     return NextResponse.json({
       product: { id: product.id, slug: product.slug, title: product.title },
       codesAdded: codes.length,
+      accountsAdded,
     });
   } catch (err) {
     console.error("admin create product error", err);

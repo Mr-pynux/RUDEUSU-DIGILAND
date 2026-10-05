@@ -1,0 +1,1280 @@
+     1→"use client";
+     2→
+     3→import { useCallback, useEffect, useMemo, useState } from "react";
+     4→import {
+     5→  ArrowLeft,
+     6→  BadgeDollarSign,
+     7→  Boxes,
+     8→  KeyRound,
+     9→  Loader2,
+    10→  Lock,
+    11→  LogOut,
+    12→  PackagePlus,
+    13→  Pencil,
+    14→  Plus,
+    15→  RefreshCcw,
+    16→  Search,
+    17→  ShieldCheck,
+    18→  Trash2,
+    19→} from "lucide-react";
+    20→import { Button } from "@/components/ui/button";
+    21→import {
+    22→  Dialog,
+    23→  DialogContent,
+    24→  DialogDescription,
+    25→  DialogHeader,
+    26→  DialogTitle,
+    27→} from "@/components/ui/dialog";
+    28→import { Input } from "@/components/ui/input";
+    29→import { Label } from "@/components/ui/label";
+    30→import {
+    31→  Select,
+    32→  SelectContent,
+    33→  SelectItem,
+    34→  SelectTrigger,
+    35→  SelectValue,
+    36→} from "@/components/ui/select";
+    37→import { Switch } from "@/components/ui/switch";
+    38→import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+    39→import { Textarea } from "@/components/ui/textarea";
+    40→import { useToast } from "@/hooks/use-toast";
+    41→import type { DeliveredItem } from "@/lib/types";
+    42→import { useI18n } from "@/lib/i18n";
+    43→import { formatMoney, useMarketplace } from "@/components/marketplace/store";
+    44→
+    45→/* ------------------------------------------------------------------ */
+    46→/* types + helpers                                                     */
+    47→/* ------------------------------------------------------------------ */
+    48→
+    49→const TOKEN_KEY = "rudeusu-admin-token";
+    50→
+    51→export type AdminProduct = {
+    52→  id: string;
+    53→  slug: string;
+    54→  title: string;
+    55→  brand: string;
+    56→  shortDescription: string;
+    57→  description: string;
+    58→  features: string;
+    59→  requirements: string;
+    60→  price: number;
+    61→  oldPrice: number | null;
+    62→  emoji: string;
+    63→  gradient: string;
+    64→  badge: string | null;
+    65→  stock: number;
+    66→  sold: number;
+    67→  deliveryType: string;
+    68→  codePrefix: string;
+    69→  instructions: string;
+    70→  categorySlug: string;
+    71→  categoryName: string;
+    72→  isActive: boolean;
+    73→  codesAvailable: number;
+    74→  codesSold: number;
+    75→};
+    76→
+    77→export type AdminOrder = {
+    78→  id: string;
+    79→  shortId: string;
+    80→  buyerEmail: string;
+    81→  items: DeliveredItem[];
+    82→  subtotal: number;
+    83→  serviceFee: number;
+    84→  total: number;
+    85→  paymentMethod: string;
+    86→  status: string;
+    87→  createdAt: string;
+    88→};
+    89→
+    90→type AdminData = {
+    91→  stats: {
+    92→    totalProducts: number;
+    93→    totalOrders: number;
+    94→    revenue: number;
+    95→    codesAvailable: number;
+    96→    codesSold: number;
+    97→  };
+    98→  products: AdminProduct[];
+    99→  orders: AdminOrder[];
+   100→};
+   101→
+   102→export const ADMIN_GRADIENTS = [
+   103→  { id: "from-violet-500 via-fuchsia-500 to-rose-400", cls: "from-violet-500 via-fuchsia-500 to-rose-400" },
+   104→  { id: "from-emerald-500 via-teal-500 to-cyan-500", cls: "from-emerald-500 via-teal-500 to-cyan-500" },
+   105→  { id: "from-orange-400 via-amber-500 to-yellow-400", cls: "from-orange-400 via-amber-500 to-yellow-400" },
+   106→  { id: "from-rose-400 via-pink-500 to-fuchsia-500", cls: "from-rose-400 via-pink-500 to-fuchsia-500" },
+   107→  { id: "from-lime-500 via-emerald-500 to-teal-500", cls: "from-lime-500 via-emerald-500 to-teal-500" },
+   108→  { id: "from-purple-500 via-violet-500 to-indigo-400", cls: "from-purple-500 via-violet-500 to-indigo-400" },
+   109→];
+   110→
+   111→export const ADMIN_EMOJIS = ["📦", "✨", "🧠", "📺", "📡", "🎵", "🎮", "🔑", "🎨", "🎬", "💳", "🛒"];
+   112→
+   113→export async function adminFetch(url: string, init?: RequestInit): Promise<Response> {
+   114→  const token = typeof window !== "undefined" ? localStorage.getItem(TOKEN_KEY) ?? "" : "";
+   115→  const res = await fetch(url, {
+   116→    ...init,
+   117→    headers: {
+   118→      "Content-Type": "application/json",
+   119→      "x-admin-key": token,
+   120→      ...(init?.headers ?? {}),
+   121→    },
+   122→  });
+   123→  return res;
+   124→}
+   125→
+   126→/* ------------------------------------------------------------------ */
+   127→/* Admin panel                                                         */
+   128→/* ------------------------------------------------------------------ */
+   129→
+   130→export function AdminPanel() {
+   131→  const { t } = useI18n();
+   132→  const { toast } = useToast();
+   133→  const goHome = useMarketplace((s) => s.goHome);
+   134→  const catalog = useMarketplace((s) => s.catalog);
+   135→  const loadCatalog = useMarketplace((s) => s.loadCatalog);
+   136→
+   137→  const [authed, setAuthed] = useState<boolean | null>(null);
+   138→  const [password, setPassword] = useState("");
+   139→  const [signingIn, setSigningIn] = useState(false);
+   140→
+   141→  const [data, setData] = useState<AdminData | null>(null);
+   142→  const [loadingData, setLoadingData] = useState(false);
+   143→  const [tab, setTab] = useState("products");
+   144→  const [productDialog, setProductDialog] = useState<{ open: boolean; edit: AdminProduct | null }>({
+   145→    open: false,
+   146→    edit: null,
+   147→  });
+   148→
+   149→  // check saved token
+   150→  useEffect(() => {
+   151→    setAuthed(!!localStorage.getItem(TOKEN_KEY));
+   152→  }, []);
+   153→
+   154→  const loadData = useCallback(async () => {
+   155→    setLoadingData(true);
+   156→    try {
+   157→      const res = await adminFetch("/api/admin/data");
+   158→      if (res.status === 401) {
+   159→        localStorage.removeItem(TOKEN_KEY);
+   160→        setAuthed(false);
+   161→        return;
+   162→      }
+   163→      if (!res.ok) throw new Error("Failed to load admin data");
+   164→      setData((await res.json()) as AdminData);
+   165→    } catch {
+   166→      toast({
+   167→        title: "Could not load data",
+   168→        description: "Check the connection and retry.",
+   169→        variant: "destructive",
+   170→      });
+   171→    } finally {
+   172→      setLoadingData(false);
+   173→    }
+   174→  }, [toast]);
+   175→
+   176→  useEffect(() => {
+   177→    if (authed) {
+   178→      loadData();
+   179→      if (!catalog) loadCatalog();
+   180→    }
+   181→  }, [authed, loadData, catalog, loadCatalog]);
+   182→
+   183→  const signIn = async () => {
+   184→    if (signingIn || !password) return;
+   185→    setSigningIn(true);
+   186→    try {
+   187→      const res = await fetch("/api/admin/login", {
+   188→        method: "POST",
+   189→        headers: { "Content-Type": "application/json" },
+   190→        body: JSON.stringify({ password }),
+   191→      });
+   192→      const data = await res.json();
+   193→      if (!res.ok) throw new Error(data.error ?? "Wrong password");
+   194→      localStorage.setItem(TOKEN_KEY, data.token);
+   195→      setAuthed(true);
+   196→      setPassword("");
+   197→    } catch (e) {
+   198→      toast({
+   199→        title: t("admin.wrongPassword"),
+   200→        description: e instanceof Error ? e.message : "",
+   201→        variant: "destructive",
+   202→      });
+   203→    } finally {
+   204→      setSigningIn(false);
+   205→    }
+   206→  };
+   207→
+   208→  const signOut = () => {
+   209→    localStorage.removeItem(TOKEN_KEY);
+   210→    setAuthed(false);
+   211→    setData(null);
+   212→  };
+   213→
+   214→  /* ---------------- login gate ---------------- */
+   215→  if (authed === null) {
+   216→    return (
+   217→      <div className="flex min-h-screen items-center justify-center bg-[oklch(0.13_0.02_305)]">
+   218→        <Loader2 className="h-6 w-6 animate-spin text-fuchsia-300" />
+   219→      </div>
+   220→    );
+   221→  }
+   222→
+   223→  if (!authed) {
+   224→    return (
+   225→      <div className="flex min-h-screen items-center justify-center bg-[oklch(0.13_0.02_305)] px-4">
+   226→        <div className="pointer-events-none absolute left-1/4 top-1/4 h-72 w-72 rounded-full bg-violet-600/20 blur-[110px]" />
+   227→        <div className="pointer-events-none absolute bottom-1/4 right-1/4 h-72 w-72 rounded-full bg-fuchsia-500/15 blur-[110px]" />
+   228→        <div className="relative w-full max-w-sm rounded-3xl border border-white/10 bg-card/80 p-7 shadow-2xl backdrop-blur">
+   229→          <div className="mb-5 flex flex-col items-center gap-3 text-center">
+   230→            <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 via-fuchsia-500 to-rose-400 shadow-lg shadow-fuchsia-500/25">
+   231→              <ShieldCheck className="h-7 w-7 text-white" />
+   232→            </span>
+   233→            <div>
+   234→              <h1 className="text-xl font-extrabold text-white">{t("admin.loginTitle")}</h1>
+   235→              <p className="mt-1 text-sm text-muted-foreground">{t("admin.loginDesc")}</p>
+   236→            </div>
+   237→          </div>
+   238→
+   239→          <div className="grid gap-3.5">
+   240→            <div className="grid gap-1.5">
+   241→              <Label htmlFor="admin-pass" className="text-sm">{t("admin.password")}</Label>
+   242→              <Input
+   243→                id="admin-pass"
+   244→                type="password"
+   245→                value={password}
+   246→                onChange={(e) => setPassword(e.target.value)}
+   247→                onKeyDown={(e) => e.key === "Enter" && signIn()}
+   248→                placeholder="••••••••••"
+   249→                className="h-11 border-white/10 bg-white/5"
+   250→                dir="ltr"
+   251→                autoFocus
+   252→              />
+   253→            </div>
+   254→            <Button
+   255→              onClick={signIn}
+   256→              disabled={signingIn}
+   257→              className="h-11 rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 font-bold text-white shadow-lg shadow-fuchsia-500/25"
+   258→            >
+   259→              {signingIn ? (
+   260→                <>
+   261→                  <Loader2 className="h-4 w-4 animate-spin" /> {t("admin.signingIn")}
+   262→                </>
+   263→              ) : (
+   264→                <>
+   265→                  <Lock className="h-4 w-4" /> {t("admin.signIn")}
+   266→                </>
+   267→              )}
+   268→            </Button>
+   269→            <p className="text-center text-[11px] text-muted-foreground">{t("admin.loginHint")}</p>
+   270→            <Button variant="ghost" onClick={goHome} className="h-9 text-muted-foreground">
+   271→              <ArrowLeft className="h-4 w-4 rtl:rotate-180" />
+   272→              {t("admin.backToStore")}
+   273→            </Button>
+   274→          </div>
+   275→        </div>
+   276→      </div>
+   277→    );
+   278→  }
+   279→
+   280→  /* ---------------- dashboard ---------------- */
+   281→  const stats = data?.stats;
+   282→
+   283→  return (
+   284→    <div className="min-h-screen bg-[oklch(0.13_0.02_305)]">
+   285→      {/* admin header */}
+   286→      <header className="sticky top-0 z-40 border-b border-white/10 bg-[oklch(0.13_0.02_305)]/90 backdrop-blur-xl">
+   287→        <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 lg:px-8">
+   288→          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 via-fuchsia-500 to-rose-400">
+   289→            <ShieldCheck className="h-5 w-5 text-white" />
+   290→          </span>
+   291→          <div className="min-w-0 flex-1">
+   292→            <p className="truncate text-[15px] font-extrabold leading-none text-white">
+   293→              {t("admin.title")}
+   294→            </p>
+   295→            <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.18em] text-fuchsia-300">
+   296→              RUDEUSU DIGILAND
+   297→            </p>
+   298→          </div>
+   299→          <Button
+   300→            variant="ghost"
+   301→            size="sm"
+   302→            onClick={() => setProductDialog({ open: true, edit: null })}
+   303→            className="hidden h-10 gap-2 rounded-full border border-emerald-400/30 bg-emerald-500/10 text-sm font-semibold text-emerald-200 hover:bg-emerald-500/20 sm:flex"
+   304→          >
+   305→            <PackagePlus className="h-4 w-4" />
+   306→            {t("admin.addProductWithCodes")}
+   307→          </Button>
+   308→          <Button
+   309→            variant="ghost"
+   310→            size="sm"
+   311→            onClick={loadData}
+   312→            className="h-10 w-10 rounded-full p-0 text-foreground/70 hover:bg-white/5"
+   313→            aria-label="Refresh"
+   314→          >
+   315→            <RefreshCcw className={`h-4 w-4 ${loadingData ? "animate-spin" : ""}`} />
+   316→          </Button>
+   317→          <Button
+   318→            variant="ghost"
+   319→            size="sm"
+   320→            onClick={goHome}
+   321→            className="hidden h-10 gap-2 text-sm text-foreground/80 hover:bg-white/5 md:flex"
+   322→          >
+   323→            <ArrowLeft className="h-4 w-4 rtl:rotate-180" />
+   324→            {t("admin.backToStore")}
+   325→          </Button>
+   326→          <Button
+   327→            variant="ghost"
+   328→            size="sm"
+   329→            onClick={signOut}
+   330→            className="h-10 w-10 rounded-full p-0 text-rose-300 hover:bg-rose-500/10 md:hidden"
+   331→            aria-label={t("admin.signOut")}
+   332→          >
+   333→            <LogOut className="h-4 w-4" />
+   334→          </Button>
+   335→        </div>
+   336→      </header>
+   337→
+   338→      <main className="mx-auto max-w-7xl px-4 py-6 lg:px-8">
+   339→        {/* stats */}
+   340→        <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+   341→          {[
+   342→            { icon: Boxes, label: t("admin.statProducts"), value: stats ? `${stats.totalProducts}` : "—", tint: "text-violet-300" },
+   343→            { icon: BadgeDollarSign, label: t("admin.statRevenue"), value: stats ? formatMoney(stats.revenue) : "—", tint: "text-emerald-300" },
+   344→            { icon: KeyRound, label: t("admin.statCodesAvailable"), value: stats ? `${stats.codesAvailable}` : "—", tint: "text-fuchsia-300" },
+   345→            { icon: KeyRound, label: t("admin.statCodesSold"), value: stats ? `${stats.codesSold}` : "—", tint: "text-amber-300" },
+   346→            { icon: ShoppingBagIcon, label: t("admin.statOrders"), value: stats ? `${stats.totalOrders}` : "—", tint: "text-rose-300" },
+   347→          ].map((s) => (
+   348→            <div key={s.label} className="rounded-2xl border border-white/10 bg-card/60 p-4">
+   349→              <span className={`flex h-9 w-9 items-center justify-center rounded-xl bg-white/5 ${s.tint}`}>
+   350→                <s.icon className="h-4.5 w-4.5" />
+   351→              </span>
+   352→              <p className="mt-2.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+   353→                {s.label}
+   354→              </p>
+   355→              <p className="text-lg font-extrabold text-white" dir="ltr">{s.value}</p>
+   356→            </div>
+   357→          ))}
+   358→        </div>
+   359→
+   360→        {/* tabs */}
+   361→        <Tabs value={tab} onValueChange={setTab} className="mt-6">
+   362→          <TabsList className="h-11 justify-start gap-1 rounded-2xl border border-white/10 bg-white/[0.04] p-1">
+   363→            <TabsTrigger value="products" className="rounded-xl px-4 data-[state=active]:bg-white/10">
+   364→              <Boxes className="me-1.5 inline h-3.5 w-3.5" />
+   365→              {t("admin.tabProducts")}
+   366→            </TabsTrigger>
+   367→            <TabsTrigger value="codes" className="rounded-xl px-4 data-[state=active]:bg-white/10">
+   368→              <KeyRound className="me-1.5 inline h-3.5 w-3.5" />
+   369→              {t("admin.tabCodes")}
+   370→            </TabsTrigger>
+   371→            <TabsTrigger value="orders" className="rounded-xl px-4 data-[state=active]:bg-white/10">
+   372→              <ShoppingBagIcon className="me-1.5 inline h-3.5 w-3.5" />
+   373→              {t("admin.tabOrders")}
+   374→            </TabsTrigger>
+   375→          </TabsList>
+   376→        </Tabs>
+   377→
+   378→        {tab === "products" ? (
+   379→          <ProductsTab
+   380→            data={data}
+   381→            loading={loadingData && !data}
+   382→            onEdit={(p) => setProductDialog({ open: true, edit: p })}
+   383→            onDeleted={async () => {
+   384→              await loadData();
+   385→              await loadCatalog();
+   386→            }}
+   387→            onOpenAdd={() => setProductDialog({ open: true, edit: null })}
+   388→          />
+   389→        ) : null}
+   390→        {tab === "codes" ? (
+   391→          <CodesTab data={data} onChanged={async () => { await loadData(); }} />
+   392→        ) : null}
+   393→        {tab === "orders" ? <OrdersTab data={data} /> : null}
+   394→      </main>
+   395→
+   396→      {/* create / edit product dialog */}
+   397→      {productDialog.open ? (
+   398→        <ProductDialog
+   399→          edit={productDialog.edit}
+   400→          categories={(catalog?.categories ?? []).map((c) => ({ slug: c.slug, name: c.name, emoji: c.emoji }))}
+   401→          onClose={() => setProductDialog({ open: false, edit: null })}
+   402→          onSaved={async () => {
+   403→            setProductDialog({ open: false, edit: null });
+   404→            await loadData();
+   405→            await loadCatalog();
+   406→          }}
+   407→        />
+   408→      ) : null}
+   409→    </div>
+   410→  );
+   411→}
+   412→
+   413→/* small inline icon reuse to avoid extra imports */
+   414→function ShoppingBagIcon({ className }: { className?: string }) {
+   415→  return (
+   416→    <svg
+   417→      viewBox="0 0 24 24"
+   418→      fill="none"
+   419→      stroke="currentColor"
+   420→      strokeWidth="2"
+   421→      strokeLinecap="round"
+   422→      strokeLinejoin="round"
+   423→      className={className}
+   424→      aria-hidden
+   425→    >
+   426→      <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
+   427→      <path d="M3 6h18" />
+   428→      <path d="M16 10a4 4 0 0 1-8 0" />
+   429→    </svg>
+   430→  );
+   431→}
+   432→
+   433→/* ------------------------------------------------------------------ */
+   434→/* Products tab                                                        */
+   435→/* ------------------------------------------------------------------ */
+   436→
+   437→function ProductsTab({
+   438→  data,
+   439→  loading,
+   440→  onEdit,
+   441→  onDeleted,
+   442→  onOpenAdd,
+   443→}: {
+   444→  data: AdminData | null;
+   445→  loading: boolean;
+   446→  onEdit: (p: AdminProduct) => void;
+   447→  onDeleted: () => Promise<void>;
+   448→  onOpenAdd: () => void;
+   449→}) {
+   450→  const { toast } = useToast();
+   451→  const { t, cat } = useI18n();
+   452→  const [query, setQuery] = useState("");
+   453→  const [deleting, setDeleting] = useState<string | null>(null);
+   454→
+   455→  const products = useMemo(() => {
+   456→    const list = data?.products ?? [];
+   457→    const q = query.trim().toLowerCase();
+   458→    if (!q) return list;
+   459→    return list.filter((p) => `${p.title} ${p.brand} ${p.categoryName}`.toLowerCase().includes(q));
+   460→  }, [data, query]);
+   461→
+   462→  const toggleActive = async (p: AdminProduct) => {
+   463→    try {
+   464→      const res = await adminFetch(`/api/admin/products/${p.id}`, {
+   465→        method: "PATCH",
+   466→        body: JSON.stringify({ isActive: !p.isActive }),
+   467→      });
+   468→      if (!res.ok) throw new Error();
+   469→      await onDeleted();
+   470→    } catch {
+   471→      toast({ title: "Update failed", variant: "destructive" });
+   472→    }
+   473→  };
+   474→
+   475→  const remove = async (p: AdminProduct) => {
+   476→    if (deleting) return;
+   477→    if (!window.confirm(t("admin.deleteConfirm"))) return;
+   478→    setDeleting(p.id);
+   479→    try {
+   480→      const res = await adminFetch(`/api/admin/products/${p.id}`, { method: "DELETE" });
+   481→      if (!res.ok) throw new Error();
+   482→      toast({ title: t("admin.productDeleted"), description: p.title });
+   483→      await onDeleted();
+   484→    } catch {
+   485→      toast({ title: "Delete failed", variant: "destructive" });
+   486→    } finally {
+   487→      setDeleting(null);
+   488→    }
+   489→  };
+   490→
+   491→  return (
+   492→    <section className="mt-4">
+   493→      <div className="mb-3 flex flex-wrap items-center gap-2">
+   494→        <div className="relative min-w-0 flex-1">
+   495→          <Search className="pointer-events-none absolute start-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+   496→          <Input
+   497→            value={query}
+   498→            onChange={(e) => setQuery(e.target.value)}
+   499→            placeholder={t("admin.searchPlaceholder")}
+   500→            className="h-10 rounded-xl border-white/10 bg-white/5 ps-10"
+   501→          />
+   502→        </div>
+   503→        <Button
+   504→          onClick={onOpenAdd}
+   505→          className="h-10 gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 font-bold text-white shadow-lg shadow-emerald-500/20 sm:hidden"
+   506→        >
+   507→          <Plus className="h-4 w-4" />
+   508→          {t("admin.addProduct")}
+   509→        </Button>
+   510→      </div>
+   511→
+   512→      {loading ? (
+   513→        <div className="flex items-center justify-center rounded-2xl border border-white/10 bg-card/50 py-16">
+   514→          <Loader2 className="h-6 w-6 animate-spin text-fuchsia-300" />
+   515→        </div>
+   516→      ) : products.length === 0 ? (
+   517→        <div className="rounded-2xl border border-dashed border-white/15 py-16 text-center">
+   518→          <p className="text-3xl">📦</p>
+   519→          <p className="mt-2 text-sm text-muted-foreground">{t("admin.noProducts")}</p>
+   520→        </div>
+   521→      ) : (
+   522→        <div className="nice-scroll max-h-[62vh] overflow-auto rounded-2xl border border-white/10">
+   523→          <table className="w-full min-w-[860px] text-sm">
+   524→            <thead className="sticky top-0 bg-[oklch(0.18_0.02_305)] text-start text-xs uppercase tracking-wide text-muted-foreground">
+   525→              <tr>
+   526→                <th className="px-4 py-3 text-start font-semibold">{t("admin.tableProduct")}</th>
+   527→                <th className="px-4 py-3 text-start font-semibold">{t("admin.tableCategory")}</th>
+   528→                <th className="px-4 py-3 text-start font-semibold">{t("admin.tablePrice")}</th>
+   529→                <th className="px-4 py-3 text-start font-semibold">{t("admin.tableStock")}</th>
+   530→                <th className="px-4 py-3 text-start font-semibold">{t("admin.tableSold")}</th>
+   531→                <th className="px-4 py-3 text-start font-semibold">{t("admin.tableCodes")}</th>
+   532→                <th className="px-4 py-3 text-start font-semibold">{t("admin.tableStatus")}</th>
+   533→                <th className="px-4 py-3 text-end font-semibold">{t("admin.tableActions")}</th>
+   534→              </tr>
+   535→            </thead>
+   536→            <tbody className="divide-y divide-white/5">
+   537→              {products.map((p) => (
+   538→                <tr key={p.id} className="transition hover:bg-white/[0.03]">
+   539→                  <td className="px-4 py-3">
+   540→                    <div className="flex items-center gap-2.5">
+   541→                      <span
+   542→                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br text-lg ${p.gradient}`}
+   543→                      >
+   544→                        {p.emoji}
+   545→                      </span>
+   546→                      <div className="min-w-0">
+   547→                        <p className="max-w-64 truncate font-semibold text-foreground">{p.title}</p>
+   548→                        <p className="text-xs text-muted-foreground">{p.brand}</p>
+   549→                      </div>
+   550→                    </div>
+   551→                  </td>
+   552→                  <td className="px-4 py-3 text-muted-foreground">
+   553→                    {cat(p.categorySlug, p.categoryName)}
+   554→                  </td>
+   555→                  <td className="px-4 py-3 font-bold text-emerald-300" dir="ltr">
+   556→                    {formatMoney(p.price)}
+   557→                  </td>
+   558→                  <td className="px-4 py-3" dir="ltr">{p.stock}</td>
+   559→                  <td className="px-4 py-3 text-muted-foreground" dir="ltr">{p.sold}</td>
+   560→                  <td className="px-4 py-3">
+   561→                    <span className="rounded-full bg-fuchsia-500/10 px-2 py-1 text-xs font-bold text-fuchsia-200" dir="ltr">
+   562→                      {p.codesAvailable}
+   563→                    </span>
+   564→                  </td>
+   565→                  <td className="px-4 py-3">
+   566→                    <Switch
+   567→                      checked={p.isActive}
+   568→                      onCheckedChange={() => toggleActive(p)}
+   569→                      aria-label={p.isActive ? t("admin.active") : t("admin.hidden")}
+   570→                    />
+   571→                  </td>
+   572→                  <td className="px-4 py-3">
+   573→                    <div className="flex items-center justify-end gap-1.5">
+   574→                      <button
+   575→                        onClick={() => onEdit(p)}
+   576→                        className="rounded-lg p-2 text-muted-foreground transition hover:bg-white/10 hover:text-foreground"
+   577→                        aria-label={t("admin.edit")}
+   578→                        title={t("admin.edit")}
+   579→                      >
+   580→                        <Pencil className="h-4 w-4" />
+   581→                      </button>
+   582→                      <button
+   583→                        onClick={() => remove(p)}
+   584→                        disabled={deleting === p.id}
+   585→                        className="rounded-lg p-2 text-rose-300 transition hover:bg-rose-500/15 disabled:opacity-40"
+   586→                        aria-label={t("admin.delete")}
+   587→                        title={t("admin.delete")}
+   588→                      >
+   589→                        {deleting === p.id ? (
+   590→                          <Loader2 className="h-4 w-4 animate-spin" />
+   591→                        ) : (
+   592→                          <Trash2 className="h-4 w-4" />
+   593→                        )}
+   594→                      </button>
+   595→                    </div>
+   596→                  </td>
+   597→                </tr>
+   598→              ))}
+   599→            </tbody>
+   600→          </table>
+   601→        </div>
+   602→      )}
+   603→    </section>
+   604→  );
+   605→}
+   606→
+   607→/* ------------------------------------------------------------------ */
+   608→/* Create / edit product dialog                                        */
+   609→/* ------------------------------------------------------------------ */
+   610→
+   611→function ProductDialog({
+   612→  edit,
+   613→  categories,
+   614→  onClose,
+   615→  onSaved,
+   616→}: {
+   617→  edit: AdminProduct | null;
+   618→  categories: { slug: string; name: string; emoji: string }[];
+   619→  onClose: () => void;
+   620→  onSaved: () => Promise<void>;
+   621→}) {
+   622→  const { toast } = useToast();
+   623→  const { t } = useI18n();
+   624→
+   625→  const [title, setTitle] = useState(edit?.title ?? "");
+   626→  const [brand, setBrand] = useState(edit?.brand ?? "RUDEUSU DIGILAND");
+   627→  const [categorySlug, setCategorySlug] = useState(edit?.categorySlug ?? categories[0]?.slug ?? "");
+   628→  const [price, setPrice] = useState(edit ? String(edit.price) : "");
+   629→  const [oldPrice, setOldPrice] = useState(edit?.oldPrice ? String(edit.oldPrice) : "");
+   630→  const [stock, setStock] = useState(edit ? String(edit.stock) : "50");
+   631→  const [emoji, setEmoji] = useState(edit?.emoji ?? "📦");
+   632→  const [gradient, setGradient] = useState(edit?.gradient ?? ADMIN_GRADIENTS[0].id);
+   633→  const [badge, setBadge] = useState(edit?.badge ?? "");
+   634→  const [shortDescription, setShortDescription] = useState(edit?.shortDescription ?? "");
+   635→  const [description, setDescription] = useState(edit?.description ?? "");
+   636→  const [features, setFeatures] = useState(edit?.features ?? "");
+   637→  const [requirements, setRequirements] = useState(edit?.requirements ?? "");
+   638→  const [instructions, setInstructions] = useState(edit?.instructions ?? "");
+   639→  const [codePrefix, setCodePrefix] = useState(edit?.codePrefix ?? "DIGI");
+   640→  const [deliveryType, setDeliveryType] = useState(edit?.deliveryType ?? "INSTANT");
+   641→  const [codes, setCodes] = useState("");
+   642→  const [saving, setSaving] = useState(false);
+   643→
+   644→  const save = async () => {
+   645→    if (saving) return;
+   646→    setSaving(true);
+   647→    try {
+   648→      if (edit) {
+   649→        const res = await adminFetch(`/api/admin/products/${edit.id}`, {
+   650→          method: "PATCH",
+   651→          body: JSON.stringify({
+   652→            title,
+   653→            brand,
+   654→            price: Number(price),
+   655→            oldPrice: oldPrice ? Number(oldPrice) : null,
+   656→            stock: Number(stock),
+   657→            emoji,
+   658→            badge,
+   659→            shortDescription,
+   660→            description,
+   661→            features,
+   662→            requirements,
+   663→            instructions,
+   664→            codePrefix,
+   665→            deliveryType,
+   666→          }),
+   667→        });
+   668→        const data = await res.json();
+   669→        if (!res.ok) throw new Error(data.error ?? "Save failed");
+   670→        toast({ title: t("admin.productUpdated"), description: title });
+   671→      } else {
+   672→        const res = await adminFetch("/api/admin/products", {
+   673→          method: "POST",
+   674→          body: JSON.stringify({
+   675→            title,
+   676→            brand,
+   677→            categorySlug,
+   678→            price: Number(price),
+   679→            oldPrice: oldPrice ? Number(oldPrice) : null,
+   680→            stock: Number(stock),
+   681→            emoji,
+   682→            gradient,
+   683→            badge,
+   684→            shortDescription,
+   685→            description,
+   686→            features,
+   687→            requirements,
+   688→            instructions,
+   689→            codePrefix,
+   690→            deliveryType,
+   691→            codes,
+   692→          }),
+   693→        });
+   694→        const data = await res.json();
+   695→        if (!res.ok) throw new Error(data.error ?? "Create failed");
+   696→        toast({
+   697→          title: t("admin.productCreated"),
+   698→          description: t("admin.productCreatedDesc", { n: data.codesAdded ?? 0 }),
+   699→        });
+   700→      }
+   701→      await onSaved();
+   702→    } catch (e) {
+   703→      toast({
+   704→        title: edit ? t("admin.saveFailed") : t("admin.createFailed"),
+   705→        description: e instanceof Error ? e.message : "",
+   706→        variant: "destructive",
+   707→      });
+   708→    } finally {
+   709→      setSaving(false);
+   710→    }
+   711→  };
+   712→
+   713→  return (
+   714→    <Dialog open onOpenChange={(o) => !o && onClose()}>
+   715→      <DialogContent className="max-h-[92vh] overflow-y-auto border-white/10 bg-[oklch(0.16_0.02_305)] sm:max-w-2xl">
+   716→        <DialogHeader>
+   717→          <DialogTitle className="flex items-center gap-2 text-xl text-white">
+   718→            <PackagePlus className="h-5 w-5 text-emerald-300" />
+   719→            {edit ? t("admin.editProduct") : t("admin.addProductWithCodes")}
+   720→          </DialogTitle>
+   721→          <DialogDescription>
+   722→            {edit
+   723→              ? t("admin.editHint")
+   724→              : t("admin.createHint")}
+   725→          </DialogDescription>
+   726→        </DialogHeader>
+   727→
+   728→        <div className="grid gap-3.5">
+   729→          <div className="grid gap-1.5">
+   730→            <Label className="text-sm">{t("admin.productTitle")}</Label>
+   731→            <Input
+   732→              value={title}
+   733→              onChange={(e) => setTitle(e.target.value)}
+   734→              placeholder="e.g. Google Gemini Pro — 12 Months"
+   735→              className="h-10 border-white/10 bg-white/5"
+   736→            />
+   737→          </div>
+   738→
+   739→          <div className="grid grid-cols-2 gap-3">
+   740→            <div className="grid gap-1.5">
+   741→              <Label className="text-sm">{t("admin.brand")}</Label>
+   742→              <Input
+   743→                value={brand}
+   744→                onChange={(e) => setBrand(e.target.value)}
+   745→                className="h-10 border-white/10 bg-white/5"
+   746→              />
+   747→            </div>
+   748→            {!edit ? (
+   749→              <div className="grid gap-1.5">
+   750→                <Label className="text-sm">{t("admin.category")}</Label>
+   751→                <Select value={categorySlug} onValueChange={setCategorySlug}>
+   752→                  <SelectTrigger className="h-10 border-white/10 bg-white/5">
+   753→                    <SelectValue placeholder={t("seller.pickCategory")} />
+   754→                  </SelectTrigger>
+   755→                  <SelectContent>
+   756→                    {categories.map((c) => (
+   757→                      <SelectItem key={c.slug} value={c.slug}>
+   758→                        {c.emoji} {c.name}
+   759→                      </SelectItem>
+   760→                    ))}
+   761→                  </SelectContent>
+   762→                </Select>
+   763→              </div>
+   764→            ) : (
+   765→              <div className="grid gap-1.5">
+   766→                <Label className="text-sm">{t("seller.delivery")}</Label>
+   767→                <Select value={deliveryType} onValueChange={setDeliveryType}>
+   768→                  <SelectTrigger className="h-10 border-white/10 bg-white/5">
+   769→                    <SelectValue />
+   770→                  </SelectTrigger>
+   771→                  <SelectContent>
+   772→                    <SelectItem value="INSTANT">{t("seller.instant")}</SelectItem>
+   773→                    <SelectItem value="MANUAL">{t("seller.manual")}</SelectItem>
+   774→                  </SelectContent>
+   775→                </Select>
+   776→              </div>
+   777→            )}
+   778→          </div>
+   779→
+   780→          <div className="grid grid-cols-3 gap-3">
+   781→            <div className="grid gap-1.5">
+   782→              <Label className="text-sm">{t("admin.price")}</Label>
+   783→              <Input
+   784→                type="number"
+   785→                min="0.5"
+   786→                step="0.01"
+   787→                value={price}
+   788→                onChange={(e) => setPrice(e.target.value)}
+   789→                placeholder="19.99"
+   790→                className="h-10 border-white/10 bg-white/5"
+   791→                dir="ltr"
+   792→              />
+   793→            </div>
+   794→            <div className="grid gap-1.5">
+   795→              <Label className="text-sm">{t("admin.oldPrice")}</Label>
+   796→              <Input
+   797→                type="number"
+   798→                min="0"
+   799→                step="0.01"
+   800→                value={oldPrice}
+   801→                onChange={(e) => setOldPrice(e.target.value)}
+   802→                placeholder="29.99"
+   803→                className="h-10 border-white/10 bg-white/5"
+   804→                dir="ltr"
+   805→              />
+   806→            </div>
+   807→            <div className="grid gap-1.5">
+   808→              <Label className="text-sm">{t("admin.stock")}</Label>
+   809→              <Input
+   810→                type="number"
+   811→                min="0"
+   812→                value={stock}
+   813→                onChange={(e) => setStock(e.target.value)}
+   814→                className="h-10 border-white/10 bg-white/5"
+   815→                dir="ltr"
+   816→              />
+   817→            </div>
+   818→          </div>
+   819→
+   820→          <div className="grid grid-cols-2 gap-3">
+   821→            <div className="grid gap-1.5">
+   822→              <Label className="text-sm">{t("admin.codePrefix")}</Label>
+   823→              <Input
+   824→                value={codePrefix}
+   825→                onChange={(e) => setCodePrefix(e.target.value)}
+   826→                className="h-10 border-white/10 bg-white/5"
+   827→                dir="ltr"
+   828→              />
+   829→            </div>
+   830→            <div className="grid gap-1.5">
+   831→              <Label className="text-sm">{t("admin.badge")}</Label>
+   832→              <Input
+   833→                value={badge ?? ""}
+   834→                onChange={(e) => setBadge(e.target.value)}
+   835→                placeholder="HOT / NEW / DEAL 30%"
+   836→                className="h-10 border-white/10 bg-white/5"
+   837→              />
+   838→            </div>
+   839→          </div>
+   840→
+   841→          <div className="grid gap-3 sm:grid-cols-2">
+   842→            <div className="grid gap-1.5">
+   843→              <Label className="text-sm">{t("seller.cover")}</Label>
+   844→              <div className="flex flex-wrap gap-1.5">
+   845→                {ADMIN_EMOJIS.map((e) => (
+   846→                  <button
+   847→                    key={e}
+   848→                    type="button"
+   849→                    onClick={() => setEmoji(e)}
+   850→                    className={`h-9 w-9 rounded-xl text-lg transition ${
+   851→                      emoji === e
+   852→                        ? "bg-fuchsia-500/25 ring-2 ring-fuchsia-400/60"
+   853→                        : "bg-white/5 hover:bg-white/10"
+   854→                    }`}
+   855→                  >
+   856→                    {e}
+   857→                  </button>
+   858→                ))}
+   859→              </div>
+   860→            </div>
+   861→            <div className="grid gap-1.5">
+   862→              <Label className="text-sm">{t("admin.gradient")}</Label>
+   863→              <div className="flex flex-wrap gap-1.5">
+   864→                {ADMIN_GRADIENTS.map((g) => (
+   865→                  <button
+   866→                    key={g.id}
+   867→                    type="button"
+   868→                    onClick={() => setGradient(g.id)}
+   869→                    className={`h-9 w-9 rounded-xl bg-gradient-to-br ${g.cls} transition ${
+   870→                      gradient === g.id ? "ring-2 ring-white/70" : "opacity-70 hover:opacity-100"
+   871→                    }`}
+   872→                    aria-label={g.id}
+   873→                  />
+   874→                ))}
+   875→              </div>
+   876→            </div>
+   877→          </div>
+   878→
+   879→          <div className="grid gap-1.5">
+   880→            <Label className="text-sm">{t("admin.short")}</Label>
+   881→            <Input
+   882→              value={shortDescription}
+   883→              onChange={(e) => setShortDescription(e.target.value)}
+   884→              placeholder={t("seller.shortPlaceholder")}
+   885→              className="h-10 border-white/10 bg-white/5"
+   886→            />
+   887→          </div>
+   888→
+   889→          <div className="grid gap-1.5">
+   890→            <Label className="text-sm">{t("admin.fullDesc")}</Label>
+   891→            <Textarea
+   892→              value={description}
+   893→              onChange={(e) => setDescription(e.target.value)}
+   894→              placeholder={t("seller.fullPlaceholder")}
+   895→              className="min-h-20 border-white/10 bg-white/5"
+   896→            />
+   897→          </div>
+   898→
+   899→          <div className="grid gap-3 sm:grid-cols-2">
+   900→            <div className="grid gap-1.5">
+   901→              <Label className="text-sm">{t("seller.features")}</Label>
+   902→              <Textarea
+   903→                value={features}
+   904→                onChange={(e) => setFeatures(e.target.value)}
+   905→                placeholder={t("seller.featuresPlaceholder")}
+   906→                className="min-h-16 border-white/10 bg-white/5"
+   907→              />
+   908→            </div>
+   909→            <div className="grid gap-1.5">
+   910→              <Label className="text-sm">{t("admin.requirements")}</Label>
+   911→              <Textarea
+   912→                value={requirements}
+   913→                onChange={(e) => setRequirements(e.target.value)}
+   914→                className="min-h-16 border-white/10 bg-white/5"
+   915→              />
+   916→            </div>
+   917→          </div>
+   918→
+   919→          <div className="grid gap-1.5">
+   920→            <Label className="text-sm">{t("admin.instructions")}</Label>
+   921→            <Textarea
+   922→              value={instructions}
+   923→              onChange={(e) => setInstructions(e.target.value)}
+   924→              className="min-h-16 border-white/10 bg-white/5"
+   925→            />
+   926→          </div>
+   927→
+   928→          {!edit ? (
+   929→            <div className="rounded-2xl border border-emerald-400/25 bg-emerald-400/5 p-4">
+   930→              <Label htmlFor="admin-codes" className="text-sm text-emerald-200">
+   931→                {t("admin.uploadedCodes")}
+   932→              </Label>
+   933→              <p className="mb-2 mt-1 text-xs text-muted-foreground">
+   934→                {t("admin.uploadedCodesHint")}
+   935→              </p>
+   936→              <Textarea
+   937→                id="admin-codes"
+   938→                value={codes}
+   939→                onChange={(e) => setCodes(e.target.value)}
+   940→                placeholder={t("admin.codesPlaceholder")}
+   941→                className="min-h-32 border-emerald-400/20 bg-black/20 font-mono text-xs"
+   942→                dir="ltr"
+   943→              />
+   944→            </div>
+   945→          ) : null}
+   946→
+   947→          <div className="flex items-center justify-end gap-2 pt-1">
+   948→            <Button variant="ghost" onClick={onClose} className="h-10 px-5 text-muted-foreground">
+   949→              {t("admin.cancel")}
+   950→            </Button>
+   951→            <Button
+   952→              onClick={save}
+   953→              disabled={saving}
+   954→              className="h-10 gap-2 rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-6 font-bold text-white shadow-lg shadow-fuchsia-500/25"
+   955→            >
+   956→              {saving ? (
+   957→                <>
+   958→                  <Loader2 className="h-4 w-4 animate-spin" />
+   959→                  {edit ? t("admin.saving") : t("admin.creating")}
+   960→                </>
+   961→              ) : edit ? (
+   962→                t("admin.updateProduct")
+   963→              ) : (
+   964→                t("admin.createProduct")
+   965→              )}
+   966→            </Button>
+   967→          </div>
+   968→        </div>
+   969→      </DialogContent>
+   970→    </Dialog>
+   971→  );
+   972→}
+   973→
+   974→/* ------------------------------------------------------------------ */
+   975→/* Codes tab                                                           */
+   976→/* ------------------------------------------------------------------ */
+   977→
+   978→type CodeRow = {
+   979→  id: string;
+   980→  value: string;
+   981→  sold: boolean;
+   982→  orderShortId: string | null;
+   983→  createdAt: string;
+   984→};
+   985→
+   986→function CodesTab({ data, onChanged }: { data: AdminData | null; onChanged: () => Promise<void> }) {
+   987→  const { toast } = useToast();
+   988→  const { t } = useI18n();
+   989→
+   990→  const products = data?.products ?? [];
+   991→  const [productId, setProductId] = useState<string>("");
+   992→  const [codes, setCodes] = useState<CodeRow[]>([]);
+   993→  const [loadingCodes, setLoadingCodes] = useState(false);
+   994→  const [bulk, setBulk] = useState("");
+   995→  const [adding, setAdding] = useState(false);
+   996→  const [deletingId, setDeletingId] = useState<string | null>(null);
+   997→
+   998→  const selected = products.find((p) => p.id === productId) ?? null;
+   999→
+  1000→  useEffect(() => {
+  1001→    if (!productId && products.length > 0) {
+  1002→      setProductId(products[0].id);
+  1003→    }
+  1004→  }, [products, productId]);
+  1005→
+  1006→  useEffect(() => {
+  1007→    if (!productId) return;
+  1008→    setLoadingCodes(true);
+  1009→    setCodes([]);
+  1010→    adminFetch(`/api/admin/products/${productId}/codes`)
+  1011→      .then((r) => r.json())
+  1012→      .then((d) => setCodes(d.codes ?? []))
+  1013→      .catch(() => setCodes([]))
+  1014→      .finally(() => setLoadingCodes(false));
+  1015→  }, [productId, data]);
+  1016→
+  1017→  const addCodes = async () => {
+  1018→    if (adding || !productId || !bulk.trim()) return;
+  1019→    setAdding(true);
+  1020→    try {
+  1021→      const res = await adminFetch(`/api/admin/products/${productId}/codes`, {
+  1022→        method: "POST",
+  1023→        body: JSON.stringify({ codes: bulk }),
+  1024→      });
+  1025→      const d = await res.json();
+  1026→      if (!res.ok) throw new Error(d.error ?? "Could not add codes");
+  1027→      toast({
+  1028→        title: t("admin.codesAdded", { n: d.added ?? 0 }),
+  1029→        description: d.skipped > 0 ? t("admin.codesDuplicate", { n: d.skipped }) : undefined,
+  1030→      });
+  1031→      setBulk("");
+  1032→      const listRes = await adminFetch(`/api/admin/products/${productId}/codes`);
+  1033→      const listData = await listRes.json();
+  1034→      setCodes(listData.codes ?? []);
+  1035→      await onChanged();
+  1036→    } catch (e) {
+  1037→      toast({
+  1038→        title: "Failed to add codes",
+  1039→        description: e instanceof Error ? e.message : "",
+  1040→        variant: "destructive",
+  1041→      });
+  1042→    } finally {
+  1043→      setAdding(false);
+  1044→    }
+  1045→  };
+  1046→
+  1047→  const deleteCode = async (code: CodeRow) => {
+  1048→    if (deletingId) return;
+  1049→    setDeletingId(code.id);
+  1050→    try {
+  1051→      const res = await adminFetch(`/api/admin/codes/${code.id}`, { method: "DELETE" });
+  1052→      if (!res.ok) {
+  1053→        const d = await res.json();
+  1054→        throw new Error(d.error ?? "Delete failed");
+  1055→      }
+  1056→      setCodes((prev) => prev.filter((c) => c.id !== code.id));
+  1057→      await onChanged();
+  1058→    } catch (e) {
+  1059→      toast({
+  1060→        title: "Delete failed",
+  1061→        description: e instanceof Error ? e.message : "",
+  1062→        variant: "destructive",
+  1063→      });
+  1064→    } finally {
+  1065→      setDeletingId(null);
+  1066→    }
+  1067→  };
+  1068→
+  1069→  return (
+  1070→    <section className="mt-4 grid gap-4 lg:grid-cols-[380px_1fr]">
+  1071→      {/* left: picker + bulk add */}
+  1072→      <div className="space-y-4">
+  1073→        <div className="rounded-2xl border border-white/10 bg-card/60 p-4">
+  1074→          <Label className="text-sm font-bold">{t("admin.codesFor")}</Label>
+  1075→          <Select value={productId} onValueChange={setProductId}>
+  1076→            <SelectTrigger className="mt-2 h-11 border-white/10 bg-white/5">
+  1077→              <SelectValue placeholder={t("admin.pickProduct")} />
+  1078→            </SelectTrigger>
+  1079→            <SelectContent>
+  1080→              {products.map((p) => (
+  1081→                <SelectItem key={p.id} value={p.id}>
+  1082→                  {p.emoji} {p.title.slice(0, 40)}
+  1083→                </SelectItem>
+  1084→              ))}
+  1085→            </SelectContent>
+  1086→          </Select>
+  1087→
+  1088→          {selected ? (
+  1089→            <div className="mt-3 flex gap-2 text-center">
+  1090→              <div className="flex-1 rounded-xl border border-fuchsia-400/20 bg-fuchsia-500/10 p-2.5">
+  1091→                <p className="text-lg font-extrabold text-fuchsia-200" dir="ltr">
+  1092→                  {selected.codesAvailable}
+  1093→                </p>
+  1094→                <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+  1095→                  {t("admin.available")}
+  1096→                </p>
+  1097→              </div>
+  1098→              <div className="flex-1 rounded-xl border border-emerald-400/20 bg-emerald-500/10 p-2.5">
+  1099→                <p className="text-lg font-extrabold text-emerald-200" dir="ltr">
+  1100→                  {selected.codesSold}
+  1101→                </p>
+  1102→                <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+  1103→                  {t("admin.soldCode")}
+  1104→                </p>
+  1105→              </div>
+  1106→            </div>
+  1107→          ) : null}
+  1108→        </div>
+  1109→
+  1110→        <div className="rounded-2xl border border-emerald-400/25 bg-emerald-400/5 p-4">
+  1111→          <Label htmlFor="bulk-codes" className="text-sm text-emerald-200">
+  1112→            {t("admin.addCodes")}
+  1113→          </Label>
+  1114→          <p className="mb-2 mt-1 text-xs text-muted-foreground">{t("admin.uploadedCodesHint")}</p>
+  1115→          <Textarea
+  1116→            id="bulk-codes"
+  1117→            value={bulk}
+  1118→            onChange={(e) => setBulk(e.target.value)}
+  1119→            placeholder={t("admin.codesPlaceholder")}
+  1120→            className="min-h-36 border-emerald-400/20 bg-black/20 font-mono text-xs"
+  1121→            dir="ltr"
+  1122→          />
+  1123→          <Button
+  1124→            onClick={addCodes}
+  1125→            disabled={adding || !productId}
+  1126→            className="mt-3 h-10 w-full gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 font-bold text-white"
+  1127→          >
+  1128→            {adding ? (
+  1129→              <>
+  1130→                <Loader2 className="h-4 w-4 animate-spin" /> {t("admin.adding")}
+  1131→              </>
+  1132→            ) : (
+  1133→              <>
+  1134→                <Plus className="h-4 w-4" /> {t("admin.addCodes")}
+  1135→              </>
+  1136→            )}
+  1137→          </Button>
+  1138→        </div>
+  1139→      </div>
+  1140→
+  1141→      {/* right: codes list */}
+  1142→      <div className="rounded-2xl border border-white/10 bg-card/60">
+  1143→        <div className="border-b border-white/10 px-4 py-3">
+  1144→          <p className="text-sm font-bold text-foreground">
+  1145→            {selected ? selected.title : t("admin.pickProduct")}
+  1146→          </p>
+  1147→          {selected ? (
+  1148→            <p className="text-xs text-muted-foreground">
+  1149→              {t("admin.availableCodes")}: {selected.codesAvailable} · {t("admin.soldCodes")}:{" "}
+  1150→              {selected.codesSold}
+  1151→            </p>
+  1152→          ) : null}
+  1153→        </div>
+  1154→        <div className="nice-scroll max-h-[56vh] overflow-y-auto p-3">
+  1155→          {loadingCodes ? (
+  1156→            <div className="flex justify-center py-10">
+  1157→              <Loader2 className="h-5 w-5 animate-spin text-fuchsia-300" />
+  1158→            </div>
+  1159→          ) : codes.length === 0 ? (
+  1160→            <div className="rounded-xl border border-dashed border-white/15 p-8 text-center">
+  1161→              <p className="text-2xl">🔑</p>
+  1162→              <p className="mt-2 text-sm text-muted-foreground">{t("admin.noCodes")}</p>
+  1163→            </div>
+  1164→          ) : (
+  1165→            <ul className="space-y-1.5">
+  1166→              {codes.map((c) => (
+  1167→                <li
+  1168→                  key={c.id}
+  1169→                  className="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2"
+  1170→                >
+  1171→                  <code className="truncate font-mono text-[13px] font-semibold text-foreground" dir="ltr">
+  1172→                    {c.value}
+  1173→                  </code>
+  1174→                  <div className="flex shrink-0 items-center gap-2">
+  1175→                    <span
+  1176→                      className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+  1177→                        c.sold
+  1178→                          ? "bg-emerald-500/15 text-emerald-300"
+  1179→                          : "bg-amber-500/15 text-amber-300"
+  1180→                      }`}
+  1181→                    >
+  1182→                      {c.sold ? t("admin.soldCode") : t("admin.available")}
+  1183→                    </span>
+  1184→                    {!c.sold ? (
+  1185→                      <button
+  1186→                        onClick={() => deleteCode(c)}
+  1187→                        disabled={deletingId === c.id}
+  1188→                        className="rounded-lg p-1.5 text-rose-300 transition hover:bg-rose-500/15 disabled:opacity-40"
+  1189→                        aria-label={t("admin.deleteCode")}
+  1190→                        title={t("admin.deleteCode")}
+  1191→                      >
+  1192→                        {deletingId === c.id ? (
+  1193→                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+  1194→                        ) : (
+  1195→                          <Trash2 className="h-3.5 w-3.5" />
+  1196→                        )}
+  1197→                      </button>
+  1198→                    ) : null}
+  1199→                  </div>
+  1200→                </li>
+  1201→              ))}
+  1202→            </ul>
+  1203→          )}
+  1204→        </div>
+  1205→      </div>
+  1206→    </section>
+  1207→  );
+  1208→}
+  1209→
+  1210→/* ------------------------------------------------------------------ */
+  1211→/* Orders tab                                                          */
+  1212→/* ------------------------------------------------------------------ */
+  1213→
+  1214→function OrdersTab({ data }: { data: AdminData | null }) {
+  1215→  const { t } = useI18n();
+  1216→  const orders = data?.orders ?? [];
+  1217→
+  1218→  if (orders.length === 0) {
+  1219→    return (
+  1220→      <div className="mt-4 rounded-2xl border border-dashed border-white/15 py-16 text-center">
+  1221→        <p className="text-3xl">🧾</p>
+  1222→        <p className="mt-2 text-sm text-muted-foreground">{t("admin.noOrders")}</p>
+  1223→      </div>
+  1224→    );
+  1225→  }
+  1226→
+  1227→  return (
+  1228→    <section className="nice-scroll mt-4 max-h-[68vh] space-y-3 overflow-y-auto pe-1">
+  1229→      {orders.map((o) => (
+  1230→        <div key={o.id} className="rounded-2xl border border-white/10 bg-card/60 p-4">
+  1231→          <div className="flex flex-wrap items-center justify-between gap-2">
+  1232→            <div className="flex items-center gap-2.5">
+  1233→              <span className="rounded-lg bg-white/5 px-2.5 py-1 font-mono text-sm font-bold text-emerald-300" dir="ltr">
+  1234→                {o.shortId}
+  1235→              </span>
+  1236→              <span className="rounded-full bg-violet-500/15 px-2.5 py-1 text-xs font-semibold text-violet-200">
+  1237→                {o.buyerEmail}
+  1238→              </span>
+  1239→            </div>
+  1240→            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+  1241→              <span className="rounded-md bg-white/5 px-2 py-0.5 font-bold uppercase">
+  1242→                {o.paymentMethod}
+  1243→              </span>
+  1244→              <span>{new Date(o.createdAt).toLocaleString()}</span>
+  1245→              <span className="text-sm font-extrabold text-white">{formatMoney(o.total)}</span>
+  1246→            </div>
+  1247→          </div>
+  1248→
+  1249→          <div className="mt-3 space-y-2 border-t border-white/5 pt-3">
+  1250→            <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+  1251→              {t("admin.orderItems")}
+  1252→            </p>
+  1253→            {o.items.map((item) => (
+  1254→              <div
+  1255→                key={item.slug}
+  1256→                className="rounded-xl border border-white/10 bg-white/[0.03] p-3"
+  1257→              >
+  1258→                <p className="text-[13px] font-semibold text-foreground/90">
+  1259→                  {item.emoji} {item.title} ×{item.quantity}
+  1260→                </p>
+  1261→                <div className="mt-1.5 flex flex-wrap gap-1.5">
+  1262→                  {item.codes.map((code, i) => (
+  1263→                    <code
+  1264→                      key={`${code}-${i}`}
+  1265→                      className="rounded-md border border-emerald-400/15 bg-emerald-400/5 px-2 py-1 font-mono text-[11px] font-bold text-emerald-300"
+  1266→                      dir="ltr"
+  1267→                    >
+  1268→                      {code}
+  1269→                    </code>
+  1270→                  ))}
+  1271→                </div>
+  1272→              </div>
+  1273→            ))}
+  1274→          </div>
+  1275→        </div>
+  1276→      ))}
+  1277→    </section>
+  1278→  );
+  1279→}
+  1280→

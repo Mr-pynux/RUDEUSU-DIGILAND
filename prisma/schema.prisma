@@ -39,6 +39,7 @@ model Product {
   sellerRating     Float    @default(4.9)
   sellerSales      Int      @default(100)
   deliveryType     String   @default("INSTANT")
+  deliveryKind     String   @default("KEY") // KEY = activation code | ACCOUNT = Gmail/password account
   codePrefix       String   @default("DIGI")
   instructions     String
   categoryId       String
@@ -47,6 +48,7 @@ model Product {
   isActive         Boolean  @default(true)
   createdAt        DateTime @default(now())
   codes            Code[]
+  accounts         Account[]
 }
 
 model Code {
@@ -59,6 +61,31 @@ model Code {
   createdAt    DateTime @default(now())
 
   @@unique([productId, value])
+}
+
+model Account {
+  id           String   @id @default(cuid())
+  email        String
+  password     String
+  extra        String   @default("")
+  productId    String
+  product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  sold         Boolean  @default(false)
+  orderShortId String?
+  createdAt    DateTime @default(now())
+
+  @@unique([productId, email])
+}
+
+model EmailLog {
+  id        String   @id @default(cuid())
+  to        String
+  subject   String
+  bodyHtml  String
+  status    String   @default("QUEUED") // SENT | QUEUED | FAILED
+  error     String   @default("")
+  orderId   String?
+  createdAt DateTime @default(now())
 }
 
 model Review {

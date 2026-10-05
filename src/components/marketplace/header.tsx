@@ -35,8 +35,13 @@ export function Header() {
           className="flex shrink-0 items-center gap-2.5 focus-visible:outline-none"
           aria-label="RUDEUSU DIGILAND home"
         >
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 via-fuchsia-500 to-rose-400 shadow-lg shadow-fuchsia-500/25">
-            <Zap className="h-5 w-5 fill-white text-white" />
+          <span className="relative h-10 w-10 shrink-0 overflow-hidden rounded-xl ring-2 ring-fuchsia-400/40 shadow-lg shadow-fuchsia-500/25">
+            { }
+            <img
+              src="/logo.jpg"
+              alt="RUDEUSU DIGILAND logo"
+              className="h-full w-full object-cover"
+            />
           </span>
           <span className="hidden flex-col items-start leading-none sm:flex">
             <span className="text-[15px] font-extrabold tracking-tight text-white">

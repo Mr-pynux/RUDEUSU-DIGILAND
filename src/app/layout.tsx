@@ -32,7 +32,7 @@ export const metadata: Metadata = {
     "instant delivery",
     "RUDEUSU DIGILAND",
   ],
-  icons: { icon: "/favicon.svg" },
+  icons: { icon: "/logo.jpg" },
   openGraph: {
     title: "RUDEUSU DIGILAND",
     description: "Instant delivery marketplace for digital goods",
