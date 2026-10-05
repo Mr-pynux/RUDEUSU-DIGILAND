@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import {
   BadgeCheck,
   Bitcoin,
+  ClipboardList,
+  Clock,
   CreditCard,
   Loader2,
   Mail,
@@ -186,6 +188,9 @@ export function CheckoutDialog() {
   const { toast } = useToast();
   const { t } = useI18n();
 
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [notes, setNotes] = useState("");
   const [email, setEmail] = useState("");
   const [payment, setPayment] = useState<string>("card");
   const [submitting, setSubmitting] = useState(false);
@@ -211,6 +216,9 @@ export function CheckoutDialog() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email,
+          name,
+          phone,
+          notes,
           paymentMethod: payment,
           items: cart.map((l) => ({ slug: l.slug, quantity: l.quantity })),
         }),
@@ -242,19 +250,67 @@ export function CheckoutDialog() {
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="grid gap-1.5">
-            <Label htmlFor="buyer-email" className="text-sm text-foreground/90">
-              {t("checkout.email")}
-            </Label>
-            <Input
-              id="buyer-email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              className="h-11 border-white/10 bg-white/5"
-              dir="ltr"
-            />
+          {/* ---------- buyer information form ---------- */}
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+            <p className="mb-3 flex items-center gap-2 text-[13px] font-bold text-fuchsia-300">
+              <ClipboardList className="h-4 w-4" />
+              {t("checkout.formTitle")}
+            </p>
+            <div className="space-y-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="buyer-name" className="text-sm text-foreground/90">
+                  {t("checkout.name")} <span className="text-rose-300">*</span>
+                </Label>
+                <Input
+                  id="buyer-name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder={t("checkout.namePlaceholder")}
+                  className="h-11 border-white/10 bg-white/5"
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="buyer-email" className="text-sm text-foreground/90">
+                  {t("checkout.email")} <span className="text-rose-300">*</span>
+                </Label>
+                <Input
+                  id="buyer-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@gmail.com"
+                  className="h-11 border-white/10 bg-white/5"
+                  dir="ltr"
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="buyer-phone" className="text-sm text-foreground/90">
+                  {t("checkout.phone")}
+                </Label>
+                <Input
+                  id="buyer-phone"
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder={t("checkout.phonePlaceholder")}
+                  className="h-11 border-white/10 bg-white/5"
+                  dir="ltr"
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="buyer-notes" className="text-sm text-foreground/90">
+                  {t("checkout.notes")}
+                </Label>
+                <Textarea
+                  id="buyer-notes"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder={t("checkout.notesPlaceholder")}
+                  className="min-h-[64px] border-white/10 bg-white/5"
+                  rows={2}
+                />
+              </div>
+            </div>
           </div>
 
           <div className="grid gap-1.5">
@@ -346,7 +402,7 @@ export function CheckoutDialog() {
   );
 }
 
-/* ================= SUCCESS / INSTANT DELIVERY ================= */
+/* ================= SUCCESS (order received / awaiting delivery) ================= */
 
 export function SuccessDialog() {
   const order = useMarketplace((s) => s.successOrder);
@@ -354,17 +410,25 @@ export function SuccessDialog() {
   const setOrdersOpen = useMarketplace((s) => s.setOrdersOpen);
   const { t } = useI18n();
 
+  const awaiting = order?.status === "NEW";
+
   return (
     <Dialog open={!!order} onOpenChange={(o) => !o && setOrder(null)}>
       <DialogContent className="max-h-[92vh] overflow-y-auto border-white/10 bg-[oklch(0.16_0.02_305)] sm:max-w-xl">
         {order ? (
           <>
             <DialogHeader>
-              <div className="mx-auto mb-1 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/15">
-                <BadgeCheck className="h-9 w-9 text-emerald-400" />
-              </div>
+              {awaiting ? (
+                <div className="mx-auto mb-1 flex h-16 w-16 items-center justify-center rounded-full bg-amber-500/15">
+                  <Clock className="h-9 w-9 text-amber-400" />
+                </div>
+              ) : (
+                <div className="mx-auto mb-1 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/15">
+                  <BadgeCheck className="h-9 w-9 text-emerald-400" />
+                </div>
+              )}
               <DialogTitle className="text-center text-2xl text-white">
-                {t("success.title")}
+                {awaiting ? t("success.awaitTitle") : t("success.title")}
               </DialogTitle>
               <DialogDescription className="text-center">
                 {t("success.order")}{" "}
@@ -376,6 +440,25 @@ export function SuccessDialog() {
             </DialogHeader>
 
             <div className="space-y-3">
+              {awaiting ? (
+                <div className="rounded-2xl border border-amber-400/25 bg-amber-400/5 p-4 text-center">
+                  <p className="text-sm font-bold text-amber-200">
+                    <span className="me-1.5 inline-flex h-5 items-center rounded-full bg-amber-500/20 px-2 text-[10px] uppercase tracking-wide">
+                      {t("success.statusAwaiting")}
+                    </span>
+                  </p>
+                  <p className="mt-2 text-[13px] leading-relaxed text-foreground/85">
+                    {t("success.awaitText", {
+                      kind:
+                        order.items.some((i) => i.kind === "ACCOUNT")
+                          ? t("success.awaitKindAccount")
+                          : t("success.awaitKindKey"),
+                    })}
+                  </p>
+                  <p className="mt-2 text-xs text-muted-foreground">{t("success.awaitNote")}</p>
+                </div>
+              ) : null}
+
               {order.items.map((item) => (
                 <div
                   key={item.slug}
@@ -398,50 +481,59 @@ export function SuccessDialog() {
                       </p>
                     </div>
                   </div>
-                  <div className="mt-3 space-y-2">
-                    {item.kind === "ACCOUNT" && item.accounts && item.accounts.length > 0 ? (
-                      item.accounts.map((acc, i) => (
-                        <div
-                          key={`${acc.email}-${i}`}
-                          className="rounded-xl border border-cyan-400/20 bg-cyan-400/5 px-3 py-2"
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <code className="truncate font-mono text-sm font-bold text-cyan-300" dir="ltr">
-                              {acc.email}
-                            </code>
-                            <CopyButton
-                              value={`${acc.email} / ${acc.password}`}
-                              label={t("success.copyAccount", { n: i + 1 })}
-                            />
-                          </div>
-                          <code className="mt-1 block truncate font-mono text-xs text-cyan-200/80" dir="ltr">
-                            {acc.password}
-                          </code>
-                        </div>
-                      ))
-                    ) : (
-                      item.codes.map((code, i) => (
-                        <div
-                          key={`${code}-${i}`}
-                          className="flex items-center justify-between gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/5 px-3 py-2"
-                        >
-                          <code
-                            className="truncate font-mono text-sm font-bold tracking-wider text-emerald-300"
-                            dir="ltr"
+                  {!awaiting ? (
+                    <div className="mt-3 space-y-2">
+                      {item.kind === "ACCOUNT" && item.accounts && item.accounts.length > 0 ? (
+                        item.accounts.map((acc, i) => (
+                          <div
+                            key={`${acc.email}-${i}`}
+                            className="rounded-xl border border-cyan-400/20 bg-cyan-400/5 px-3 py-2"
                           >
-                            {code}
-                          </code>
-                          <CopyButton value={code} label={t("success.copyCode", { n: i + 1 })} />
-                        </div>
-                      ))
-                    )}
-                  </div>
-                  {item.kind === "ACCOUNT" ? (
+                            <div className="flex items-center justify-between gap-2">
+                              <code className="truncate font-mono text-sm font-bold text-cyan-300" dir="ltr">
+                                {acc.email}
+                              </code>
+                              <CopyButton
+                                value={`${acc.email} / ${acc.password}`}
+                                label={t("success.copyAccount", { n: i + 1 })}
+                              />
+                            </div>
+                            <code className="mt-1 block truncate font-mono text-xs text-cyan-200/80" dir="ltr">
+                              {acc.password}
+                            </code>
+                          </div>
+                        ))
+                      ) : (
+                        item.codes.map((code, i) => (
+                          <div
+                            key={`${code}-${i}`}
+                            className="flex items-center justify-between gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/5 px-3 py-2"
+                          >
+                            <code
+                              className="truncate font-mono text-sm font-bold tracking-wider text-emerald-300"
+                              dir="ltr"
+                            >
+                              {code}
+                            </code>
+                            <CopyButton value={code} label={t("success.copyCode", { n: i + 1 })} />
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  ) : null}
+                  {awaiting ? (
+                    <p className="mt-2.5 text-[11px] font-medium text-amber-200/80">
+                      {item.kind === "ACCOUNT"
+                        ? `👤 ${t("success.awaitKindAccount")} × ${item.quantity}`
+                        : `🔑 ${t("success.awaitKindKey")} × ${item.quantity}`}
+                    </p>
+                  ) : null}
+                  {item.kind === "ACCOUNT" && !awaiting ? (
                     <p className="mt-2 rounded-lg border border-cyan-400/15 bg-cyan-400/5 px-3 py-2 text-xs text-cyan-200/90">
                       ℹ️ {t("success.accountNote")}
                     </p>
                   ) : null}
-                  {item.instructions ? (
+                  {item.instructions && !awaiting ? (
                     <details className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
                       <summary className="cursor-pointer text-xs font-bold uppercase tracking-wide text-fuchsia-300">
                         {t("success.howToActivate")}
@@ -568,13 +660,30 @@ export function OrdersDialog() {
           {orders?.map((o) => (
             <div key={o.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="font-mono text-sm font-bold text-emerald-300" dir="ltr">
-                  {o.shortId}
-                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="font-mono text-sm font-bold text-emerald-300" dir="ltr">
+                    {o.shortId}
+                  </p>
+                  {o.status === "NEW" ? (
+                    <span className="rounded-full bg-amber-500/15 px-2.5 py-0.5 text-[10px] font-bold uppercase text-amber-300">
+                      <Clock className="me-1 inline h-3 w-3" />
+                      {t("success.statusAwaiting")}
+                    </span>
+                  ) : (
+                    <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[10px] font-bold uppercase text-emerald-300">
+                      {t("orders.statusDelivered")}
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs text-muted-foreground">
                   {new Date(o.createdAt).toLocaleString()} · {o.paymentMethod.toUpperCase()}
                 </p>
               </div>
+              {o.status === "NEW" ? (
+                <p className="mt-2.5 rounded-lg border border-amber-400/20 bg-amber-400/5 px-3 py-2 text-xs text-amber-200/90">
+                  ⏳ {t("orders.statusAwaiting")} — <b dir="ltr">{o.buyerEmail}</b>
+                </p>
+              ) : null}
               {o.items.map((item) => (
                 <div key={item.slug} className="mt-3 space-y-1.5">
                   <p className="text-[13px] font-semibold text-foreground/90">

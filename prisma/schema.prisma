@@ -100,14 +100,19 @@ model Review {
 }
 
 model Order {
-  id            String   @id @default(cuid())
-  shortId       String   @unique
+  id            String    @id @default(cuid())
+  shortId       String    @unique
   buyerEmail    String
+  buyerName     String    @default("")
+  buyerPhone    String    @default("")
+  buyerNotes    String    @default("")
   itemsJson     String
   subtotal      Float
   serviceFee    Float
   total         Float
   paymentMethod String
-  status        String   @default("COMPLETED")
-  createdAt     DateTime @default(now())
+  status        String    @default("NEW") // NEW = awaiting manual send | DELIVERED = sent to buyer | COMPLETED = legacy instant order
+  emailStatus   String    @default("") // last delivery email attempt: SENT | QUEUED | FAILED
+  deliveredAt   DateTime?
+  createdAt     DateTime  @default(now())
 }

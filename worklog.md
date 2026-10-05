@@ -60,3 +60,26 @@ Stage Summary:
 - Admin credentials: password G''ds3FJFRVGF (entry: shield button in header or /#admin, token auto-issued)
 - Gmail real sending: set GMAIL_USER + GMAIL_APP_PASSWORD env vars (Google App Password) and restart; until then emails are QUEUED and viewable in admin Gmail delivery tab
 - Key files: src/lib/mailer.ts, src/app/api/admin/products/[id]/accounts/route.ts, src/app/api/admin/accounts/[id]/route.ts, src/components/admin/admin-panel.tsx, prisma/schema.prisma
+
+---
+Task ID: 4
+Agent: main (Super Z)
+Task: Manual delivery flow — buyer info form + "Send to Gmail" button in admin (user request in Arabic)
+
+Work Log:
+- Prisma Order model: added buyerName/buyerPhone/buyerNotes, emailStatus, deliveredAt; status now NEW (awaiting manual send) -> DELIVERED; db push + client regenerate
+- Checkout API rewritten: buyer information form (name required, Gmail required, phone/WhatsApp + notes optional) -> creates NEW order with item snapshot (no key/account allocated, no email sent); stock reserved at checkout
+- New API POST /api/admin/orders/[id]/deliver: allocates pool items (ACCOUNT -> gmail/password, KEY -> serial key, oldest first; generated fallback + fallbacks[] warning when pool empty), marks order DELIVERED, emails buyer via sendDeliveryEmail; body {resend:true} re-sends email on delivered orders without re-allocation; mailer now returns SENT/QUEUED/FAILED
+- Admin data API: +awaitingOrders stat, orders include buyer info + emailStatus + deliveredAt
+- Admin panel: 7th stat card "Awaiting send", Orders tab badge with pending count, OrdersTab rewritten (amber highlighted NEW cards, buyer info card with name/phone/Gmail/notes, Send to Gmail button with loading state, status-specific toasts incl. Gmail-not-connected queue warning + pool-empty restock warning, Resend email on delivered orders)
+- Storefront: checkout dialog got "Buyer information form" section (name/email/phone/notes), success dialog shows "Order received!" + AWAITING DELIVERY banner (no instant codes), My purchases shows awaiting/delivered status badges per order
+- i18n: ~40 new EN + AR keys (form fields, awaiting states, send/resend, buyer info); marketing copy updated from "instant delivery" to "sent to your Gmail after confirmation" (strip, hero, how-it-works)
+- Restarted dev server (stale Prisma client without buyerName field caused 500)
+- API smoke tests: checkout->NEW, deliver->DELIVERED with pool key IPTV-91XQ... + email QUEUED, resend OK, /api/orders lookup OK
+- Browser verified (agent-browser): buyer form renders EN, order placed -> success "Order received!" with awaiting banner, admin login, Orders tab "1" badge + amber NEW card with buyer form data, Send to Gmail click -> DELIVERED + rudeusu.gem02@gmail.com / Gm#71pWnVb8 chip + queued-email toast, Gmail delivery log email contains the account, buyer My purchases shows "Delivered to your Gmail" + credentials, Arabic RTL admin orders correct, mobile 390px AR storefront OK, no console errors
+- Test data cleaned (order/email/allocation/stock restored); lint + tsc clean (src/)
+
+Stage Summary:
+- Flow now matches owner's request: buyer fills information form -> sale lands in admin Orders tab -> owner presses "Send to Gmail" -> pool key OR gmail/password attached + emailed to buyer's Gmail (queues in admin email log when GMAIL_USER/GMAIL_APP_PASSWORD env vars are not set, real sending when set)
+- Admin password unchanged: G''ds3FJFRVGF
+- Key files: src/app/api/checkout/route.ts, src/app/api/admin/orders/[id]/deliver/route.ts, src/lib/mailer.ts, src/components/admin/admin-panel.tsx, src/components/marketplace/dialogs.tsx, src/lib/i18n.ts, prisma/schema.prisma

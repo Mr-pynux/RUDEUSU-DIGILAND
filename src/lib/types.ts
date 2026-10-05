@@ -81,12 +81,17 @@ export type ApiOrder = {
   id: string;
   shortId: string;
   buyerEmail: string;
+  buyerName: string;
+  buyerPhone: string;
+  buyerNotes: string;
   items: DeliveredItem[];
   subtotal: number;
   serviceFee: number;
   total: number;
   paymentMethod: string;
   status: string;
+  emailStatus: string;
+  deliveredAt: string | null;
   createdAt: string;
 };
 

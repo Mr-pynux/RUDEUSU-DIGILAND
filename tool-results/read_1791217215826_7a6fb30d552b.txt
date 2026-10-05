@@ -1,0 +1,863 @@
+     1→"use client";
+     2→
+     3→import { useEffect, useState } from "react";
+     4→import {
+     5→  BadgeCheck,
+     6→  Bitcoin,
+     7→  CreditCard,
+     8→  Loader2,
+     9→  Mail,
+    10→  Minus,
+    11→  PackageOpen,
+    12→  Plus,
+    13→  ShoppingBag,
+    14→  ShoppingCart,
+    15→  Smartphone,
+    16→  Trash2,
+    17→  Wallet,
+    18→  Zap,
+    19→} from "lucide-react";
+    20→import { Button } from "@/components/ui/button";
+    21→import {
+    22→  Dialog,
+    23→  DialogContent,
+    24→  DialogDescription,
+    25→  DialogHeader,
+    26→  DialogTitle,
+    27→} from "@/components/ui/dialog";
+    28→import { Input } from "@/components/ui/input";
+    29→import { Label } from "@/components/ui/label";
+    30→import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+    31→import {
+    32→  Select,
+    33→  SelectContent,
+    34→  SelectItem,
+    35→  SelectTrigger,
+    36→  SelectValue,
+    37→} from "@/components/ui/select";
+    38→import { Separator } from "@/components/ui/separator";
+    39→import {
+    40→  Sheet,
+    41→  SheetContent,
+    42→  SheetDescription,
+    43→  SheetHeader,
+    44→  SheetTitle,
+    45→} from "@/components/ui/sheet";
+    46→import { Textarea } from "@/components/ui/textarea";
+    47→import { useToast } from "@/hooks/use-toast";
+    48→import type { ApiOrder } from "@/lib/types";
+    49→import { useI18n } from "@/lib/i18n";
+    50→import { cartSubtotal, formatMoney, serviceFee, useMarketplace } from "./store";
+    51→import { CopyButton } from "./ui-bits";
+    52→
+    53→const PAYMENT_IDS = ["card", "paypal", "crypto", "applepay"] as const;
+    54→
+    55→/* ================= CART ================= */
+    56→
+    57→export function CartSheet() {
+    58→  const open = useMarketplace((s) => s.cartOpen);
+    59→  const setOpen = useMarketplace((s) => s.setCartOpen);
+    60→  const cart = useMarketplace((s) => s.cart);
+    61→  const setQty = useMarketplace((s) => s.setQty);
+    62→  const removeFromCart = useMarketplace((s) => s.removeFromCart);
+    63→  const setCheckoutOpen = useMarketplace((s) => s.setCheckoutOpen);
+    64→  const { t } = useI18n();
+    65→
+    66→  const subtotal = cartSubtotal(cart);
+    67→  const fee = serviceFee(subtotal);
+    68→
+    69→  return (
+    70→    <Sheet open={open} onOpenChange={setOpen}>
+    71→      <SheetContent
+    72→        side="right"
+    73→        className="flex w-full flex-col gap-0 border-white/10 bg-[oklch(0.15_0.02_305)] p-0 sm:max-w-md"
+    74→      >
+    75→        <SheetHeader className="border-b border-white/10 px-5 py-4">
+    76→          <SheetTitle className="flex items-center gap-2 text-lg text-white">
+    77→            <ShoppingCart className="h-5 w-5 text-fuchsia-300" />
+    78→            {t("cart.title")}
+    79→          </SheetTitle>
+    80→          <SheetDescription className="text-xs text-muted-foreground">
+    81→            {t("cart.desc")}
+    82→          </SheetDescription>
+    83→        </SheetHeader>
+    84→
+    85→        <div className="nice-scroll flex-1 space-y-3 overflow-y-auto px-5 py-4">
+    86→          {cart.length === 0 ? (
+    87→            <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
+    88→              <span className="text-5xl">🛒</span>
+    89→              <p className="font-semibold text-foreground">{t("cart.emptyTitle")}</p>
+    90→              <p className="max-w-60 text-sm text-muted-foreground">{t("cart.emptyText")}</p>
+    91→            </div>
+    92→          ) : (
+    93→            cart.map((line) => (
+    94→              <div
+    95→                key={line.slug}
+    96→                className="flex gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3"
+    97→              >
+    98→                <span
+    99→                  className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br text-2xl ${line.gradient}`}
+   100→                >
+   101→                  {line.emoji}
+   102→                </span>
+   103→                <div className="min-w-0 flex-1">
+   104→                  <p className="line-clamp-2 text-sm font-semibold leading-snug text-foreground">
+   105→                    {line.title}
+   106→                  </p>
+   107→                  <div className="mt-2 flex items-center justify-between gap-2">
+   108→                    <div className="flex items-center rounded-full border border-white/10 bg-white/5">
+   109→                      <button
+   110→                        onClick={() => setQty(line.slug, line.quantity - 1)}
+   111→                        className="flex h-7 w-7 items-center justify-center rounded-full hover:bg-white/10"
+   112→                        aria-label={t("cart.decrease")}
+   113→                      >
+   114→                        <Minus className="h-3 w-3" />
+   115→                      </button>
+   116→                      <span className="w-7 text-center text-xs font-bold">{line.quantity}</span>
+   117→                      <button
+   118→                        onClick={() => setQty(line.slug, line.quantity + 1)}
+   119→                        className="flex h-7 w-7 items-center justify-center rounded-full hover:bg-white/10"
+   120→                        aria-label={t("cart.increase")}
+   121→                      >
+   122→                        <Plus className="h-3 w-3" />
+   123→                      </button>
+   124→                    </div>
+   125→                    <span className="text-sm font-bold text-emerald-300">
+   126→                      {formatMoney(line.price * line.quantity)}
+   127→                    </span>
+   128→                  </div>
+   129→                </div>
+   130→                <button
+   131→                  onClick={() => removeFromCart(line.slug)}
+   132→                  className="h-fit rounded-full p-1.5 text-muted-foreground transition hover:bg-rose-500/15 hover:text-rose-300"
+   133→                  aria-label={t("cart.remove", { title: line.title })}
+   134→                >
+   135→                  <Trash2 className="h-4 w-4" />
+   136→                </button>
+   137→              </div>
+   138→            ))
+   139→          )}
+   140→        </div>
+   141→
+   142→        {cart.length > 0 ? (
+   143→          <div className="space-y-3 border-t border-white/10 px-5 py-4">
+   144→            <div className="space-y-1.5 text-sm">
+   145→              <div className="flex justify-between text-muted-foreground">
+   146→                <span>{t("cart.subtotal")}</span>
+   147→                <span className="text-foreground">{formatMoney(subtotal)}</span>
+   148→              </div>
+   149→              <div className="flex justify-between text-muted-foreground">
+   150→                <span>{t("cart.fee")}</span>
+   151→                <span className="text-foreground">{formatMoney(fee)}</span>
+   152→              </div>
+   153→              <Separator className="bg-white/10" />
+   154→              <div className="flex justify-between text-base font-bold text-white">
+   155→                <span>{t("cart.total")}</span>
+   156→                <span>{formatMoney(subtotal + fee)}</span>
+   157→              </div>
+   158→            </div>
+   159→            <Button
+   160→              onClick={() => {
+   161→                setOpen(false);
+   162→                setCheckoutOpen(true);
+   163→              }}
+   164→              className="h-12 w-full rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 text-[15px] font-bold text-white shadow-lg shadow-fuchsia-500/25 hover:from-violet-400 hover:to-fuchsia-400"
+   165→            >
+   166→              <Zap className="h-4 w-4" />
+   167→              {t("cart.checkout", { total: formatMoney(subtotal + fee) })}
+   168→            </Button>
+   169→          </div>
+   170→        ) : null}
+   171→      </SheetContent>
+   172→    </Sheet>
+   173→  );
+   174→}
+   175→
+   176→/* ================= CHECKOUT ================= */
+   177→
+   178→export function CheckoutDialog() {
+   179→  const open = useMarketplace((s) => s.checkoutOpen);
+   180→  const setOpen = useMarketplace((s) => s.setCheckoutOpen);
+   181→  const cart = useMarketplace((s) => s.cart);
+   182→  const clearCart = useMarketplace((s) => s.clearCart);
+   183→  const setSuccessOrder = useMarketplace((s) => s.setSuccessOrder);
+   184→  const lastEmail = useMarketplace((s) => s.lastEmail);
+   185→  const setLastEmail = useMarketplace((s) => s.setLastEmail);
+   186→  const { toast } = useToast();
+   187→  const { t } = useI18n();
+   188→
+   189→  const [email, setEmail] = useState("");
+   190→  const [payment, setPayment] = useState<string>("card");
+   191→  const [submitting, setSubmitting] = useState(false);
+   192→  const [error, setError] = useState<string | null>(null);
+   193→
+   194→  useEffect(() => {
+   195→    if (open) {
+   196→      setEmail(lastEmail);
+   197→      setError(null);
+   198→    }
+   199→  }, [open, lastEmail]);
+   200→
+   201→  const subtotal = cartSubtotal(cart);
+   202→  const fee = serviceFee(subtotal);
+   203→
+   204→  const pay = async () => {
+   205→    if (submitting) return;
+   206→    setSubmitting(true);
+   207→    setError(null);
+   208→    try {
+   209→      const res = await fetch("/api/checkout", {
+   210→        method: "POST",
+   211→        headers: { "Content-Type": "application/json" },
+   212→        body: JSON.stringify({
+   213→          email,
+   214→          paymentMethod: payment,
+   215→          items: cart.map((l) => ({ slug: l.slug, quantity: l.quantity })),
+   216→        }),
+   217→      });
+   218→      const data = await res.json();
+   219→      if (!res.ok) throw new Error(data.error ?? "Payment failed");
+   220→      setOpen(false);
+   221→      setSuccessOrder(data.order as ApiOrder);
+   222→      setLastEmail(email);
+   223→      clearCart();
+   224→    } catch (e) {
+   225→      const msg = e instanceof Error ? e.message : "Payment failed";
+   226→      setError(msg);
+   227→      toast({ title: t("checkout.failed"), description: msg, variant: "destructive" });
+   228→    } finally {
+   229→      setSubmitting(false);
+   230→    }
+   231→  };
+   232→
+   233→  return (
+   234→    <Dialog open={open} onOpenChange={setOpen}>
+   235→      <DialogContent className="max-h-[92vh] overflow-y-auto border-white/10 bg-[oklch(0.16_0.02_305)] sm:max-w-lg">
+   236→        <DialogHeader>
+   237→          <DialogTitle className="flex items-center gap-2 text-xl text-white">
+   238→            <Zap className="h-5 w-5 text-amber-300" />
+   239→            {t("checkout.title")}
+   240→          </DialogTitle>
+   241→          <DialogDescription>{t("checkout.desc")}</DialogDescription>
+   242→        </DialogHeader>
+   243→
+   244→        <div className="space-y-4">
+   245→          <div className="grid gap-1.5">
+   246→            <Label htmlFor="buyer-email" className="text-sm text-foreground/90">
+   247→              {t("checkout.email")}
+   248→            </Label>
+   249→            <Input
+   250→              id="buyer-email"
+   251→              type="email"
+   252→              value={email}
+   253→              onChange={(e) => setEmail(e.target.value)}
+   254→              placeholder="you@example.com"
+   255→              className="h-11 border-white/10 bg-white/5"
+   256→              dir="ltr"
+   257→            />
+   258→          </div>
+   259→
+   260→          <div className="grid gap-1.5">
+   261→            <Label className="text-sm text-foreground/90">{t("checkout.method")}</Label>
+   262→            <RadioGroup value={payment} onValueChange={setPayment} className="grid grid-cols-2 gap-2">
+   263→              {PAYMENT_IDS.map((id) => (
+   264→                <Label
+   265→                  key={id}
+   266→                  htmlFor={`pay-${id}`}
+   267→                  className={`flex cursor-pointer items-center gap-3 rounded-2xl border p-3.5 transition ${
+   268→                    payment === id
+   269→                      ? "border-fuchsia-400/60 bg-fuchsia-500/10"
+   270→                      : "border-white/10 bg-white/[0.03] hover:border-white/25"
+   271→                  }`}
+   272→                >
+   273→                  <RadioGroupItem id={`pay-${id}`} value={id} className="sr-only" />
+   274→                  <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/5 text-fuchsia-200">
+   275→                    {id === "card" ? (
+   276→                      <CreditCard className="h-5 w-5" />
+   277→                    ) : id === "paypal" ? (
+   278→                      <Wallet className="h-5 w-5" />
+   279→                    ) : id === "crypto" ? (
+   280→                      <Bitcoin className="h-5 w-5" />
+   281→                    ) : (
+   282→                      <Smartphone className="h-5 w-5" />
+   283→                    )}
+   284→                  </span>
+   285→                  <span>
+   286→                    <span className="block text-[13px] font-bold text-foreground">
+   287→                      {t(`checkout.${id}`)}
+   288→                    </span>
+   289→                    <span className="block text-[11px] text-muted-foreground">
+   290→                      {t(`checkout.${id}Hint`)}
+   291→                    </span>
+   292→                  </span>
+   293→                </Label>
+   294→              ))}
+   295→            </RadioGroup>
+   296→          </div>
+   297→
+   298→          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+   299→            {cart.map((l) => (
+   300→              <div
+   301→                key={l.slug}
+   302→                className="flex items-center justify-between gap-2 py-1 text-sm"
+   303→              >
+   304→                <span className="min-w-0 flex-1 truncate text-foreground/85">
+   305→                  {l.emoji} {l.title} <span className="text-muted-foreground">×{l.quantity}</span>
+   306→                </span>
+   307→                <span className="font-semibold text-foreground/85">
+   308→                  {formatMoney(l.price * l.quantity)}
+   309→                </span>
+   310→              </div>
+   311→            ))}
+   312→            <Separator className="my-2 bg-white/10" />
+   313→            <div className="flex justify-between py-0.5 text-xs text-muted-foreground">
+   314→              <span>{t("checkout.serviceFee")}</span>
+   315→              <span>{formatMoney(fee)}</span>
+   316→            </div>
+   317→            <div className="flex justify-between pt-1 text-base font-bold text-white">
+   318→              <span>{t("cart.total")}</span>
+   319→              <span>{formatMoney(subtotal + fee)}</span>
+   320→            </div>
+   321→          </div>
+   322→
+   323→          {error ? (
+   324→            <p className="rounded-xl border border-rose-400/30 bg-rose-500/10 px-3.5 py-2.5 text-sm text-rose-200">
+   325→              {error}
+   326→            </p>
+   327→          ) : null}
+   328→
+   329→          <Button
+   330→            onClick={pay}
+   331→            disabled={submitting || cart.length === 0}
+   332→            className="h-12 w-full rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 text-[15px] font-bold text-white shadow-lg shadow-fuchsia-500/25 hover:from-violet-400 hover:to-fuchsia-400"
+   333→          >
+   334→            {submitting ? (
+   335→              <>
+   336→                <Loader2 className="h-4 w-4 animate-spin" /> {t("checkout.paying")}
+   337→              </>
+   338→            ) : (
+   339→              t("checkout.pay", { total: formatMoney(subtotal + fee) })
+   340→            )}
+   341→          </Button>
+   342→          <p className="text-center text-[11px] text-muted-foreground">{t("checkout.demoNote")}</p>
+   343→        </div>
+   344→      </DialogContent>
+   345→    </Dialog>
+   346→  );
+   347→}
+   348→
+   349→/* ================= SUCCESS / INSTANT DELIVERY ================= */
+   350→
+   351→export function SuccessDialog() {
+   352→  const order = useMarketplace((s) => s.successOrder);
+   353→  const setOrder = useMarketplace((s) => s.setSuccessOrder);
+   354→  const setOrdersOpen = useMarketplace((s) => s.setOrdersOpen);
+   355→  const { t } = useI18n();
+   356→
+   357→  return (
+   358→    <Dialog open={!!order} onOpenChange={(o) => !o && setOrder(null)}>
+   359→      <DialogContent className="max-h-[92vh] overflow-y-auto border-white/10 bg-[oklch(0.16_0.02_305)] sm:max-w-xl">
+   360→        {order ? (
+   361→          <>
+   362→            <DialogHeader>
+   363→              <div className="mx-auto mb-1 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/15">
+   364→                <BadgeCheck className="h-9 w-9 text-emerald-400" />
+   365→              </div>
+   366→              <DialogTitle className="text-center text-2xl text-white">
+   367→                {t("success.title")}
+   368→              </DialogTitle>
+   369→              <DialogDescription className="text-center">
+   370→                {t("success.order")}{" "}
+   371→                <b className="font-mono text-emerald-300" dir="ltr">
+   372→                  {order.shortId}
+   373→                </b>{" "}
+   374→                · {t("success.copySent")} <b className="text-foreground/90">{order.buyerEmail}</b>
+   375→              </DialogDescription>
+   376→            </DialogHeader>
+   377→
+   378→            <div className="space-y-3">
+   379→              {order.items.map((item) => (
+   380→                <div
+   381→                  key={item.slug}
+   382→                  className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"
+   383→                >
+   384→                  <div className="flex items-center gap-3">
+   385→                    <span
+   386→                      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br text-2xl ${item.gradient}`}
+   387→                    >
+   388→                      {item.emoji}
+   389→                    </span>
+   390→                    <div className="min-w-0 flex-1">
+   391→                      <p className="truncate text-sm font-bold text-foreground">{item.title}</p>
+   392→                      <p className="text-xs text-muted-foreground">
+   393→                        {t("success.qty", {
+   394→                          n: item.quantity,
+   395→                          seller: item.sellerName,
+   396→                          price: formatMoney(item.unitPrice),
+   397→                        })}
+   398→                      </p>
+   399→                    </div>
+   400→                  </div>
+   401→                  <div className="mt-3 space-y-2">
+   402→                    {item.kind === "ACCOUNT" && item.accounts && item.accounts.length > 0 ? (
+   403→                      item.accounts.map((acc, i) => (
+   404→                        <div
+   405→                          key={`${acc.email}-${i}`}
+   406→                          className="rounded-xl border border-cyan-400/20 bg-cyan-400/5 px-3 py-2"
+   407→                        >
+   408→                          <div className="flex items-center justify-between gap-2">
+   409→                            <code className="truncate font-mono text-sm font-bold text-cyan-300" dir="ltr">
+   410→                              {acc.email}
+   411→                            </code>
+   412→                            <CopyButton
+   413→                              value={`${acc.email} / ${acc.password}`}
+   414→                              label={t("success.copyAccount", { n: i + 1 })}
+   415→                            />
+   416→                          </div>
+   417→                          <code className="mt-1 block truncate font-mono text-xs text-cyan-200/80" dir="ltr">
+   418→                            {acc.password}
+   419→                          </code>
+   420→                        </div>
+   421→                      ))
+   422→                    ) : (
+   423→                      item.codes.map((code, i) => (
+   424→                        <div
+   425→                          key={`${code}-${i}`}
+   426→                          className="flex items-center justify-between gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/5 px-3 py-2"
+   427→                        >
+   428→                          <code
+   429→                            className="truncate font-mono text-sm font-bold tracking-wider text-emerald-300"
+   430→                            dir="ltr"
+   431→                          >
+   432→                            {code}
+   433→                          </code>
+   434→                          <CopyButton value={code} label={t("success.copyCode", { n: i + 1 })} />
+   435→                        </div>
+   436→                      ))
+   437→                    )}
+   438→                  </div>
+   439→                  {item.kind === "ACCOUNT" ? (
+   440→                    <p className="mt-2 rounded-lg border border-cyan-400/15 bg-cyan-400/5 px-3 py-2 text-xs text-cyan-200/90">
+   441→                      ℹ️ {t("success.accountNote")}
+   442→                    </p>
+   443→                  ) : null}
+   444→                  {item.instructions ? (
+   445→                    <details className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+   446→                      <summary className="cursor-pointer text-xs font-bold uppercase tracking-wide text-fuchsia-300">
+   447→                        {t("success.howToActivate")}
+   448→                      </summary>
+   449→                      <p className="mt-2 whitespace-pre-line text-[13px] leading-relaxed text-muted-foreground">
+   450→                        {item.instructions}
+   451→                      </p>
+   452→                    </details>
+   453→                  ) : null}
+   454→                </div>
+   455→              ))}
+   456→
+   457→              <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm">
+   458→                <span className="text-muted-foreground">
+   459→                  {t("success.paidVia")}{" "}
+   460→                  <b className="uppercase text-foreground/80">{order.paymentMethod}</b>
+   461→                </span>
+   462→                <span className="text-lg font-bold text-white">{formatMoney(order.total)}</span>
+   463→              </div>
+   464→
+   465→              <div className="grid grid-cols-2 gap-2.5 pt-1">
+   466→                <Button
+   467→                  variant="outline"
+   468→                  onClick={() => {
+   469→                    setOrder(null);
+   470→                    setOrdersOpen(true);
+   471→                  }}
+   472→                  className="h-11 rounded-2xl border-white/15 bg-white/5 font-semibold text-foreground hover:bg-white/10"
+   473→                >
+   474→                  <Mail className="h-4 w-4" />
+   475→                  {t("success.myPurchases")}
+   476→                </Button>
+   477→                <Button
+   478→                  onClick={() => setOrder(null)}
+   479→                  className="h-11 rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 font-bold text-white"
+   480→                >
+   481→                  {t("success.continue")}
+   482→                </Button>
+   483→              </div>
+   484→            </div>
+   485→          </>
+   486→        ) : null}
+   487→      </DialogContent>
+   488→    </Dialog>
+   489→  );
+   490→}
+   491→
+   492→/* ================= MY ORDERS ================= */
+   493→
+   494→export function OrdersDialog() {
+   495→  const open = useMarketplace((s) => s.ordersOpen);
+   496→  const setOpen = useMarketplace((s) => s.setOrdersOpen);
+   497→  const lastEmail = useMarketplace((s) => s.lastEmail);
+   498→  const { toast } = useToast();
+   499→  const { t } = useI18n();
+   500→
+   501→  const [email, setEmail] = useState("");
+   502→  const [orders, setOrders] = useState<ApiOrder[] | null>(null);
+   503→  const [loading, setLoading] = useState(false);
+   504→
+   505→  useEffect(() => {
+   506→    if (open) {
+   507→      setEmail(lastEmail);
+   508→      setOrders(null);
+   509→    }
+   510→  }, [open, lastEmail]);
+   511→
+   512→  const lookup = async () => {
+   513→    if (loading || !email.trim()) return;
+   514→    setLoading(true);
+   515→    try {
+   516→      const res = await fetch(`/api/orders?email=${encodeURIComponent(email.trim())}`);
+   517→      const data = await res.json();
+   518→      if (!res.ok) throw new Error(data.error ?? "Lookup failed");
+   519→      setOrders(data.orders ?? []);
+   520→      if ((data.orders ?? []).length === 0) {
+   521→        toast({
+   522→          title: t("orders.noneTitle"),
+   523→          description: t("orders.noneText", { email: email.trim() }),
+   524→        });
+   525→      }
+   526→    } catch (e) {
+   527→      toast({
+   528→        title: t("orders.failed"),
+   529→        description: e instanceof Error ? e.message : "Try again",
+   530→        variant: "destructive",
+   531→      });
+   532→    } finally {
+   533→      setLoading(false);
+   534→    }
+   535→  };
+   536→
+   537→  return (
+   538→    <Dialog open={open} onOpenChange={setOpen}>
+   539→      <DialogContent className="max-h-[92vh] overflow-y-auto border-white/10 bg-[oklch(0.16_0.02_305)] sm:max-w-xl">
+   540→        <DialogHeader>
+   541→          <DialogTitle className="flex items-center gap-2 text-xl text-white">
+   542→            <PackageOpen className="h-5 w-5 text-fuchsia-300" />
+   543→            {t("orders.title")}
+   544→          </DialogTitle>
+   545→          <DialogDescription>{t("orders.desc")}</DialogDescription>
+   546→        </DialogHeader>
+   547→
+   548→        <div className="flex gap-2">
+   549→          <Input
+   550→            type="email"
+   551→            value={email}
+   552→            onChange={(e) => setEmail(e.target.value)}
+   553→            placeholder="you@example.com"
+   554→            className="h-11 border-white/10 bg-white/5"
+   555→            dir="ltr"
+   556→            onKeyDown={(e) => e.key === "Enter" && lookup()}
+   557→          />
+   558→          <Button
+   559→            onClick={lookup}
+   560→            disabled={loading}
+   561→            className="h-11 shrink-0 rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-5 font-bold text-white"
+   562→          >
+   563→            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : t("orders.find")}
+   564→          </Button>
+   565→        </div>
+   566→
+   567→        <div className="nice-scroll max-h-[50vh] space-y-3 overflow-y-auto pe-1">
+   568→          {orders?.map((o) => (
+   569→            <div key={o.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+   570→              <div className="flex flex-wrap items-center justify-between gap-2">
+   571→                <p className="font-mono text-sm font-bold text-emerald-300" dir="ltr">
+   572→                  {o.shortId}
+   573→                </p>
+   574→                <p className="text-xs text-muted-foreground">
+   575→                  {new Date(o.createdAt).toLocaleString()} · {o.paymentMethod.toUpperCase()}
+   576→                </p>
+   577→              </div>
+   578→              {o.items.map((item) => (
+   579→                <div key={item.slug} className="mt-3 space-y-1.5">
+   580→                  <p className="text-[13px] font-semibold text-foreground/90">
+   581→                    {item.emoji} {item.title} ×{item.quantity}
+   582→                  </p>
+   583→                  {item.codes && item.codes.length > 0
+   584→                    ? item.codes.map((code, i) => (
+   585→                        <div
+   586→                          key={`${o.id}-${code}-${i}`}
+   587→                          className="flex items-center justify-between gap-2 rounded-lg border border-emerald-400/15 bg-emerald-400/5 px-2.5 py-1.5"
+   588→                        >
+   589→                          <code
+   590→                            className="truncate font-mono text-xs font-bold text-emerald-300"
+   591→                            dir="ltr"
+   592→                          >
+   593→                            {code}
+   594→                          </code>
+   595→                          <CopyButton value={code} />
+   596→                        </div>
+   597→                      ))
+   598→                    : null}
+   599→                  {item.accounts && item.accounts.length > 0
+   600→                    ? item.accounts.map((acc, i) => (
+   601→                        <div
+   602→                          key={`${o.id}-${acc.email}-${i}`}
+   603→                          className="flex items-center justify-between gap-2 rounded-lg border border-cyan-400/15 bg-cyan-400/5 px-2.5 py-1.5"
+   604→                        >
+   605→                          <code
+   606→                            className="truncate font-mono text-xs font-bold text-cyan-300"
+   607→                            dir="ltr"
+   608→                          >
+   609→                            {acc.email} / {acc.password}
+   610→                          </code>
+   611→                          <CopyButton value={`${acc.email} / ${acc.password}`} />
+   612→                        </div>
+   613→                      ))
+   614→                    : null}
+   615→                </div>
+   616→              ))}
+   617→              <div className="mt-3 flex justify-end gap-1 border-t border-white/10 pt-2 text-sm">
+   618→                <span className="text-muted-foreground">{t("orders.total")}&nbsp;</span>
+   619→                <span className="font-bold text-white">{formatMoney(o.total)}</span>
+   620→              </div>
+   621→            </div>
+   622→          ))}
+   623→          {orders && orders.length === 0 ? (
+   624→            <div className="rounded-2xl border border-dashed border-white/15 p-8 text-center">
+   625→              <p className="text-3xl">📭</p>
+   626→              <p className="mt-2 text-sm text-muted-foreground">{t("orders.empty")}</p>
+   627→            </div>
+   628→          ) : null}
+   629→        </div>
+   630→      </DialogContent>
+   631→    </Dialog>
+   632→  );
+   633→}
+   634→
+   635→/* ================= SELLER CENTER ================= */
+   636→
+   637→const EMOJI_CHOICES = ["📦", "✨", "🧠", "📺", "📡", "🎵", "🎮", "🔑", "🎨", "🎬", "💳", "🛒"];
+   638→
+   639→export function SellerDialog() {
+   640→  const open = useMarketplace((s) => s.sellerOpen);
+   641→  const setOpen = useMarketplace((s) => s.setSellerOpen);
+   642→  const catalog = useMarketplace((s) => s.catalog);
+   643→  const loadCatalog = useMarketplace((s) => s.loadCatalog);
+   644→  const { toast } = useToast();
+   645→  const { t } = useI18n();
+   646→
+   647→  const [title, setTitle] = useState("");
+   648→  const [categorySlug, setCategorySlug] = useState("");
+   649→  const [price, setPrice] = useState("");
+   650→  const [stock, setStock] = useState("25");
+   651→  const [emoji, setEmoji] = useState("📦");
+   652→  const [shortDescription, setShortDescription] = useState("");
+   653→  const [description, setDescription] = useState("");
+   654→  const [features, setFeatures] = useState("");
+   655→  const [deliveryType, setDeliveryType] = useState("INSTANT");
+   656→  const [submitting, setSubmitting] = useState(false);
+   657→
+   658→  useEffect(() => {
+   659→    if (open && !categorySlug && catalog && catalog.categories.length > 0) {
+   660→      setCategorySlug(catalog.categories[0].slug);
+   661→    }
+   662→  }, [open, catalog, categorySlug]);
+   663→
+   664→  const publish = async () => {
+   665→    if (submitting) return;
+   666→    setSubmitting(true);
+   667→    try {
+   668→      const res = await fetch("/api/products", {
+   669→        method: "POST",
+   670→        headers: { "Content-Type": "application/json" },
+   671→        body: JSON.stringify({
+   672→          title,
+   673→          categorySlug,
+   674→          price: Number(price),
+   675→          stock: Number(stock),
+   676→          emoji,
+   677→          shortDescription,
+   678→          description,
+   679→          features,
+   680→          deliveryType,
+   681→          sellerName: "Rudeusu",
+   682→        }),
+   683→      });
+   684→      const data = await res.json();
+   685→      if (!res.ok) throw new Error(data.error ?? "Could not publish");
+   686→      toast({
+   687→        title: t("seller.published"),
+   688→        description: t("seller.publishedDesc", { title: data.product.title }),
+   689→      });
+   690→      await loadCatalog();
+   691→      setOpen(false);
+   692→      setTitle("");
+   693→      setPrice("");
+   694→      setShortDescription("");
+   695→      setDescription("");
+   696→      setFeatures("");
+   697→    } catch (e) {
+   698→      toast({
+   699→        title: t("seller.failed"),
+   700→        description: e instanceof Error ? e.message : "Try again",
+   701→        variant: "destructive",
+   702→      });
+   703→    } finally {
+   704→      setSubmitting(false);
+   705→    }
+   706→  };
+   707→
+   708→  return (
+   709→    <Dialog open={open} onOpenChange={setOpen}>
+   710→      <DialogContent className="max-h-[92vh] overflow-y-auto border-white/10 bg-[oklch(0.16_0.02_305)] sm:max-w-xl">
+   711→        <DialogHeader>
+   712→          <DialogTitle className="flex items-center gap-2 text-xl text-white">
+   713→            <ShoppingBag className="h-5 w-5 text-fuchsia-300" />
+   714→            {t("seller.title")}
+   715→          </DialogTitle>
+   716→          <DialogDescription>{t("seller.desc")}</DialogDescription>
+   717→        </DialogHeader>
+   718→
+   719→        <div className="grid gap-3.5">
+   720→          <div className="grid gap-1.5">
+   721→            <Label htmlFor="sp-title" className="text-sm">{t("seller.productTitle")}</Label>
+   722→            <Input
+   723→              id="sp-title"
+   724→              value={title}
+   725→              onChange={(e) => setTitle(e.target.value)}
+   726→              placeholder={t("seller.titlePlaceholder")}
+   727→              className="h-10 border-white/10 bg-white/5"
+   728→            />
+   729→          </div>
+   730→
+   731→          <div className="grid grid-cols-2 gap-3">
+   732→            <div className="grid gap-1.5">
+   733→              <Label className="text-sm">{t("seller.category")}</Label>
+   734→              <Select value={categorySlug} onValueChange={setCategorySlug}>
+   735→                <SelectTrigger className="h-10 border-white/10 bg-white/5">
+   736→                  <SelectValue placeholder={t("seller.pickCategory")} />
+   737→                </SelectTrigger>
+   738→                <SelectContent>
+   739→                  {(catalog?.categories ?? []).map((c) => (
+   740→                    <SelectItem key={c.slug} value={c.slug}>
+   741→                      {c.emoji} {c.name}
+   742→                    </SelectItem>
+   743→                  ))}
+   744→                </SelectContent>
+   745→              </Select>
+   746→            </div>
+   747→            <div className="grid gap-1.5">
+   748→              <Label className="text-sm">{t("seller.delivery")}</Label>
+   749→              <Select value={deliveryType} onValueChange={setDeliveryType}>
+   750→                <SelectTrigger className="h-10 border-white/10 bg-white/5">
+   751→                  <SelectValue />
+   752→                </SelectTrigger>
+   753→                <SelectContent>
+   754→                  <SelectItem value="INSTANT">{t("seller.instant")}</SelectItem>
+   755→                  <SelectItem value="MANUAL">{t("seller.manual")}</SelectItem>
+   756→                </SelectContent>
+   757→              </Select>
+   758→            </div>
+   759→          </div>
+   760→
+   761→          <div className="grid grid-cols-2 gap-3">
+   762→            <div className="grid gap-1.5">
+   763→              <Label htmlFor="sp-price" className="text-sm">{t("seller.price")}</Label>
+   764→              <Input
+   765→                id="sp-price"
+   766→                type="number"
+   767→                min="0.5"
+   768→                step="0.01"
+   769→                value={price}
+   770→                onChange={(e) => setPrice(e.target.value)}
+   771→                placeholder="9.99"
+   772→                className="h-10 border-white/10 bg-white/5"
+   773→                dir="ltr"
+   774→              />
+   775→            </div>
+   776→            <div className="grid gap-1.5">
+   777→              <Label htmlFor="sp-stock" className="text-sm">{t("seller.stock")}</Label>
+   778→              <Input
+   779→                id="sp-stock"
+   780→                type="number"
+   781→                min="1"
+   782→                value={stock}
+   783→                onChange={(e) => setStock(e.target.value)}
+   784→                className="h-10 border-white/10 bg-white/5"
+   785→                dir="ltr"
+   786→              />
+   787→            </div>
+   788→          </div>
+   789→
+   790→          <div className="grid gap-1.5">
+   791→            <Label className="text-sm">{t("seller.cover")}</Label>
+   792→            <div className="flex flex-wrap gap-1.5">
+   793→              {EMOJI_CHOICES.map((e) => (
+   794→                <button
+   795→                  key={e}
+   796→                  type="button"
+   797→                  onClick={() => setEmoji(e)}
+   798→                  className={`h-9 w-9 rounded-xl text-lg transition ${
+   799→                    emoji === e
+   800→                      ? "bg-fuchsia-500/25 ring-2 ring-fuchsia-400/60"
+   801→                      : "bg-white/5 hover:bg-white/10"
+   802→                  }`}
+   803→                >
+   804→                  {e}
+   805→                </button>
+   806→              ))}
+   807→            </div>
+   808→          </div>
+   809→
+   810→          <div className="grid gap-1.5">
+   811→            <Label htmlFor="sp-short" className="text-sm">{t("seller.short")}</Label>
+   812→            <Input
+   813→              id="sp-short"
+   814→              value={shortDescription}
+   815→              onChange={(e) => setShortDescription(e.target.value)}
+   816→              placeholder={t("seller.shortPlaceholder")}
+   817→              className="h-10 border-white/10 bg-white/5"
+   818→            />
+   819→          </div>
+   820→
+   821→          <div className="grid gap-1.5">
+   822→            <Label htmlFor="sp-desc" className="text-sm">{t("seller.full")}</Label>
+   823→            <Textarea
+   824→              id="sp-desc"
+   825→              value={description}
+   826→              onChange={(e) => setDescription(e.target.value)}
+   827→              placeholder={t("seller.fullPlaceholder")}
+   828→              className="min-h-20 border-white/10 bg-white/5"
+   829→            />
+   830→          </div>
+   831→
+   832→          <div className="grid gap-1.5">
+   833→            <Label htmlFor="sp-features" className="text-sm">
+   834→              {t("seller.features")}
+   835→            </Label>
+   836→            <Textarea
+   837→              id="sp-features"
+   838→              value={features}
+   839→              onChange={(e) => setFeatures(e.target.value)}
+   840→              placeholder={t("seller.featuresPlaceholder")}
+   841→              className="min-h-16 border-white/10 bg-white/5"
+   842→            />
+   843→          </div>
+   844→
+   845→          <Button
+   846→            onClick={publish}
+   847→            disabled={submitting}
+   848→            className="h-11 rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 font-bold text-white shadow-lg shadow-fuchsia-500/25"
+   849→          >
+   850→            {submitting ? (
+   851→              <>
+   852→                <Loader2 className="h-4 w-4 animate-spin" /> {t("seller.publishing")}
+   853→              </>
+   854→            ) : (
+   855→              t("seller.publish")
+   856→            )}
+   857→          </Button>
+   858→        </div>
+   859→      </DialogContent>
+   860→    </Dialog>
+   861→  );
+   862→}
+   863→

@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   BadgeDollarSign,
   Boxes,
+  Clock,
   Copy,
   KeyRound,
   Loader2,
@@ -16,6 +17,7 @@ import {
   Plus,
   RefreshCcw,
   Search,
+  Send,
   ShieldCheck,
   Trash2,
   UserRound,
@@ -84,12 +86,17 @@ export type AdminOrder = {
   id: string;
   shortId: string;
   buyerEmail: string;
+  buyerName: string;
+  buyerPhone: string;
+  buyerNotes: string;
   items: DeliveredItem[];
   subtotal: number;
   serviceFee: number;
   total: number;
   paymentMethod: string;
   status: string;
+  emailStatus: string;
+  deliveredAt: string | null;
   createdAt: string;
 };
 
@@ -108,6 +115,7 @@ type AdminData = {
   stats: {
     totalProducts: number;
     totalOrders: number;
+    awaitingOrders: number;
     revenue: number;
     codesAvailable: number;
     codesSold: number;
@@ -303,6 +311,7 @@ export function AdminPanel() {
 
   /* ---------------- dashboard ---------------- */
   const stats = data?.stats;
+  const awaitingCount = stats?.awaitingOrders ?? 0;
 
   return (
     <div className="min-h-screen bg-[oklch(0.13_0.02_305)]">
@@ -366,10 +375,11 @@ export function AdminPanel() {
           {[
             { icon: Boxes, label: t("admin.statProducts"), value: stats ? `${stats.totalProducts}` : "—", tint: "text-violet-300" },
             { icon: BadgeDollarSign, label: t("admin.statRevenue"), value: stats ? formatMoney(stats.revenue) : "—", tint: "text-emerald-300" },
+            { icon: Clock, label: t("admin.statAwaiting"), value: stats ? `${stats.awaitingOrders}` : "—", tint: "text-amber-300" },
             { icon: KeyRound, label: t("admin.statCodesAvailable"), value: stats ? `${stats.codesAvailable}` : "—", tint: "text-fuchsia-300" },
             { icon: UserRound, label: t("admin.statAccountsAvailable"), value: stats ? `${stats.accountsAvailable}` : "—", tint: "text-cyan-300" },
-            { icon: Mail, label: stats?.gmailConfigured ? t("admin.emailSent") : t("admin.emailQueued"), value: stats ? `${stats.emailsSent + stats.emailsQueued}` : "—", tint: "text-amber-300" },
-            { icon: ShoppingBagIcon, label: t("admin.statOrders"), value: stats ? `${stats.totalOrders}` : "—", tint: "text-rose-300" },
+            { icon: Mail, label: stats?.gmailConfigured ? t("admin.emailSent") : t("admin.emailQueued"), value: stats ? `${stats.emailsSent + stats.emailsQueued}` : "—", tint: "text-rose-300" },
+            { icon: ShoppingBagIcon, label: t("admin.statOrders"), value: stats ? `${stats.totalOrders}` : "—", tint: "text-lime-300" },
           ].map((s) => (
             <div key={s.label} className="rounded-2xl border border-white/10 bg-card/60 p-4">
               <span className={`flex h-9 w-9 items-center justify-center rounded-xl bg-white/5 ${s.tint}`}>
@@ -405,6 +415,11 @@ export function AdminPanel() {
             <TabsTrigger value="orders" className="rounded-xl px-4 data-[state=active]:bg-white/10">
               <ShoppingBagIcon className="me-1.5 inline h-3.5 w-3.5" />
               {t("admin.tabOrders")}
+              {awaitingCount > 0 ? (
+                <span className="ms-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500/25 px-1.5 text-[10px] font-extrabold text-amber-300">
+                  {awaitingCount}
+                </span>
+              ) : null}
             </TabsTrigger>
           </TabsList>
         </Tabs>
@@ -428,7 +443,7 @@ export function AdminPanel() {
           <AccountsTab data={data} onChanged={async () => { await loadData(); }} />
         ) : null}
         {tab === "emails" ? <EmailsTab data={data} /> : null}
-        {tab === "orders" ? <OrdersTab data={data} /> : null}
+        {tab === "orders" ? <OrdersTab data={data} onChanged={loadData} /> : null}
       </main>
 
       {/* create / edit product dialog */}
@@ -1711,9 +1726,59 @@ GMAIL_APP_PASSWORD=abcd efgh ijkl mnop`}
   );
 }
 
-function OrdersTab({ data }: { data: AdminData | null }) {
+function OrdersTab({
+  data,
+  onChanged,
+}: {
+  data: AdminData | null;
+  onChanged: () => Promise<void>;
+}) {
   const { t } = useI18n();
+  const { toast } = useToast();
   const orders = data?.orders ?? [];
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const deliver = async (id: string, resend = false) => {
+    if (busyId) return;
+    setBusyId(id);
+    try {
+      const res = await adminFetch(`/api/admin/orders/${id}/deliver`, {
+        method: "POST",
+        body: JSON.stringify({ resend }),
+      });
+      const payload = await res.json();
+      if (!res.ok) throw new Error(payload.error ?? "Delivery failed");
+      const emailStatus = String(payload.emailStatus ?? "FAILED");
+      if (resend) {
+        toast({ title: t("admin.resentOk") });
+      } else if (emailStatus === "SENT") {
+        toast({
+          title: t("admin.sentOkTitle"),
+          description: t("admin.sentOkDesc", { id: payload.order?.shortId ?? "" }),
+        });
+      } else if (emailStatus === "QUEUED") {
+        toast({ title: t("admin.sentQueuedTitle"), description: t("admin.sentQueuedDesc") });
+      } else {
+        toast({
+          title: t("admin.sentFailedTitle"),
+          description: t("admin.sentFailedDesc"),
+          variant: "destructive",
+        });
+      }
+      if (Array.isArray(payload.fallbacks) && payload.fallbacks.length > 0) {
+        toast({ title: `⚠️ ${t("admin.fallbackWarn")}`, variant: "destructive" });
+      }
+      await onChanged();
+    } catch (e) {
+      toast({
+        title: t("admin.sentFailedTitle"),
+        description: e instanceof Error ? e.message : "",
+        variant: "destructive",
+      });
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   if (orders.length === 0) {
     return (
@@ -1725,68 +1790,187 @@ function OrdersTab({ data }: { data: AdminData | null }) {
   }
 
   return (
-    <section className="nice-scroll mt-4 max-h-[68vh] space-y-3 overflow-y-auto pe-1">
-      {orders.map((o) => (
-        <div key={o.id} className="rounded-2xl border border-white/10 bg-card/60 p-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2.5">
-              <span className="rounded-lg bg-white/5 px-2.5 py-1 font-mono text-sm font-bold text-emerald-300" dir="ltr">
-                {o.shortId}
-              </span>
-              <span className="rounded-full bg-violet-500/15 px-2.5 py-1 text-xs font-semibold text-violet-200">
-                {o.buyerEmail}
-              </span>
-            </div>
-            <div className="flex items-center gap-3 text-xs text-muted-foreground">
-              <span className="rounded-md bg-white/5 px-2 py-0.5 font-bold uppercase">
-                {o.paymentMethod}
-              </span>
-              <span>{new Date(o.createdAt).toLocaleString()}</span>
-              <span className="text-sm font-extrabold text-white">{formatMoney(o.total)}</span>
-            </div>
-          </div>
+    <section className="nice-scroll mt-4 max-h-[70vh] space-y-3 overflow-y-auto pe-1">
+      {orders.map((o) => {
+        const isNew = o.status === "NEW";
+        const delivered = o.status === "DELIVERED" || o.status === "COMPLETED";
+        const busy = busyId === o.id;
 
-          <div className="mt-3 space-y-2 border-t border-white/5 pt-3">
-            <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-              {t("admin.orderItems")}
-            </p>
-            {o.items.map((item) => (
-              <div
-                key={item.slug}
-                className="rounded-xl border border-white/10 bg-white/[0.03] p-3"
-              >
-                <p className="text-[13px] font-semibold text-foreground/90">
-                  {item.emoji} {item.title} ×{item.quantity}
-                </p>
-                <div className="mt-1.5 flex flex-wrap gap-1.5">
-                  {item.codes.map((code, i) => (
-                    <code
-                      key={`${code}-${i}`}
-                      className="rounded-md border border-emerald-400/15 bg-emerald-400/5 px-2 py-1 font-mono text-[11px] font-bold text-emerald-300"
-                      dir="ltr"
-                    >
-                      {code}
-                    </code>
-                  ))}
-                </div>
-                {item.accounts && item.accounts.length > 0 ? (
-                  <div className="mt-1.5 flex flex-wrap gap-1.5">
-                    {item.accounts.map((acc, i) => (
-                      <code
-                        key={`${acc.email}-${i}`}
-                        className="rounded-md border border-cyan-400/15 bg-cyan-400/5 px-2 py-1 font-mono text-[11px] font-bold text-cyan-300"
-                        dir="ltr"
-                      >
-                        {acc.email} / {acc.password}
-                      </code>
-                    ))}
-                  </div>
-                ) : null}
+        return (
+          <div
+            key={o.id}
+            className={`rounded-2xl border bg-card/60 p-4 ${
+              isNew ? "border-amber-400/25 shadow-[0_0_24px_-8px] shadow-amber-500/20" : "border-white/10"
+            }`}
+          >
+            {/* header row */}
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className="rounded-lg bg-white/5 px-2.5 py-1 font-mono text-sm font-bold text-emerald-300"
+                  dir="ltr"
+                >
+                  {o.shortId}
+                </span>
+                {isNew ? (
+                  <span className="rounded-full bg-amber-500/15 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-amber-300">
+                    <Clock className="me-1 inline h-3 w-3" />
+                    {t("admin.statusNew")}
+                  </span>
+                ) : (
+                  <span className="rounded-full bg-emerald-500/15 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-emerald-300">
+                    {t("admin.statusDelivered")}
+                  </span>
+                )}
               </div>
-            ))}
+              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                <span className="rounded-md bg-white/5 px-2 py-0.5 font-bold uppercase">
+                  {o.paymentMethod}
+                </span>
+                <span>{new Date(o.createdAt).toLocaleString()}</span>
+                <span className="text-sm font-extrabold text-white">{formatMoney(o.total)}</span>
+              </div>
+            </div>
+
+            {/* buyer information (order form) */}
+            <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-fuchsia-300">
+                📋 {t("admin.buyerInfo")}
+              </p>
+              <div className="mt-2 grid gap-x-4 gap-y-1.5 text-[13px] sm:grid-cols-3">
+                <p className="min-w-0">
+                  <span className="text-muted-foreground">{t("admin.buyerName")}: </span>
+                  <span className="font-semibold text-foreground">{o.buyerName || "—"}</span>
+                </p>
+                <p className="min-w-0">
+                  <span className="text-muted-foreground">{t("admin.buyerPhone")}: </span>
+                  <span className="font-semibold text-foreground" dir="ltr">
+                    {o.buyerPhone || "—"}
+                  </span>
+                </p>
+                <p className="min-w-0">
+                  <span className="text-muted-foreground">Gmail: </span>
+                  <span className="font-semibold text-foreground" dir="ltr">
+                    {o.buyerEmail}
+                  </span>
+                </p>
+              </div>
+              <p className="mt-1.5 text-[13px]">
+                <span className="text-muted-foreground">{t("admin.buyerNotes")}: </span>
+                <span className="text-foreground/90">{o.buyerNotes || t("admin.noNotes")}</span>
+              </p>
+            </div>
+
+            {/* items */}
+            <div className="mt-3 space-y-2 border-t border-white/5 pt-3">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                {t("admin.orderItems")}
+              </p>
+              {o.items.map((item) => (
+                <div
+                  key={item.slug}
+                  className="rounded-xl border border-white/10 bg-white/[0.03] p-3"
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-[13px] font-semibold text-foreground/90">
+                      {item.emoji} {item.title} ×{item.quantity}
+                    </p>
+                    <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] font-bold text-muted-foreground">
+                      {item.kind === "ACCOUNT"
+                        ? t("admin.kindBadgeAccount")
+                        : t("admin.kindBadgeKey")}
+                    </span>
+                  </div>
+                  {delivered ? (
+                    <>
+                      <div className="mt-1.5 flex flex-wrap gap-1.5">
+                        {item.codes.map((code, i) => (
+                          <code
+                            key={`${code}-${i}`}
+                            className="rounded-md border border-emerald-400/15 bg-emerald-400/5 px-2 py-1 font-mono text-[11px] font-bold text-emerald-300"
+                            dir="ltr"
+                          >
+                            {code}
+                          </code>
+                        ))}
+                      </div>
+                      {item.accounts && item.accounts.length > 0 ? (
+                        <div className="mt-1.5 flex flex-wrap gap-1.5">
+                          {item.accounts.map((acc, i) => (
+                            <code
+                              key={`${acc.email}-${i}`}
+                              className="rounded-md border border-cyan-400/15 bg-cyan-400/5 px-2 py-1 font-mono text-[11px] font-bold text-cyan-300"
+                              dir="ltr"
+                            >
+                              {acc.email} / {acc.password}
+                            </code>
+                          ))}
+                        </div>
+                      ) : null}
+                    </>
+                  ) : (
+                    <p className="mt-1.5 text-xs text-muted-foreground">
+                      {item.kind === "ACCOUNT"
+                        ? `👤 ${t("admin.kindAccountDesc")}`
+                        : `🔑 ${t("admin.kindKeyDesc")}`}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* delivery action */}
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-white/5 pt-3">
+              {delivered ? (
+                <>
+                  <span className="text-xs text-muted-foreground">
+                    {o.emailStatus === "SENT"
+                      ? `✅ ${t("admin.emailSent")} → ${o.buyerEmail}`
+                      : o.emailStatus === "FAILED"
+                        ? `❌ ${t("admin.emailFailed")} — ${t("admin.sentFailedDesc")}`
+                        : o.emailStatus === "QUEUED"
+                          ? `⏳ ${t("admin.emailQueued")} — ${t("admin.sentQueuedDesc")}`
+                          : o.deliveredAt
+                            ? `✅ ${new Date(o.deliveredAt).toLocaleString()}`
+                            : ""}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={busy}
+                    onClick={() => deliver(o.id, true)}
+                    className="h-9 gap-2 rounded-xl border-white/15 bg-white/5 text-xs font-semibold hover:bg-white/10"
+                  >
+                    {busy ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Send className="h-3.5 w-3.5" />
+                    )}
+                    {busy ? t("admin.resending") : t("admin.resend")}
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <span className="text-xs text-muted-foreground">📧 {o.buyerEmail}</span>
+                  <Button
+                    size="sm"
+                    disabled={busy}
+                    onClick={() => deliver(o.id)}
+                    className="h-10 gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-5 text-sm font-extrabold text-white shadow-lg shadow-emerald-500/25 hover:from-emerald-400 hover:to-teal-400"
+                  >
+                    {busy ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
+                    {busy ? t("admin.sending") : t("admin.sendToGmail")}
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </section>
   );
 }

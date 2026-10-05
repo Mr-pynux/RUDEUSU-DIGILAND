@@ -26,12 +26,17 @@ export async function GET(req: Request) {
     id: o.id,
     shortId: o.shortId,
     buyerEmail: o.buyerEmail,
+    buyerName: o.buyerName,
+    buyerPhone: o.buyerPhone,
+    buyerNotes: o.buyerNotes,
     items: JSON.parse(o.itemsJson) as DeliveredItem[],
     subtotal: o.subtotal,
     serviceFee: o.serviceFee,
     total: o.total,
     paymentMethod: o.paymentMethod,
     status: o.status,
+    emailStatus: o.emailStatus,
+    deliveredAt: o.deliveredAt ? o.deliveredAt.toISOString() : null,
     createdAt: o.createdAt.toISOString(),
   }));
 

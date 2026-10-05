@@ -100,6 +100,8 @@ export function buildDeliveryEmail(order: {
   return { subject, html };
 }
 
+export type DeliveryEmailStatus = "SENT" | "QUEUED" | "FAILED";
+
 /** Sends (or queues) the delivery email for a completed order. */
 export async function sendDeliveryEmail(order: {
   id: string;
@@ -108,14 +110,14 @@ export async function sendDeliveryEmail(order: {
   total: number;
   paymentMethod: string;
   items: DeliveredItem[];
-}): Promise<void> {
+}): Promise<DeliveryEmailStatus> {
   const { subject, html } = buildDeliveryEmail(order);
 
   if (!gmailConfigured()) {
     await db.emailLog.create({
       data: { to: order.buyerEmail, subject, bodyHtml: html, status: "QUEUED", orderId: order.id },
     });
-    return;
+    return "QUEUED";
   }
 
   try {
@@ -132,6 +134,7 @@ export async function sendDeliveryEmail(order: {
     await db.emailLog.create({
       data: { to: order.buyerEmail, subject, bodyHtml: html, status: "SENT", orderId: order.id },
     });
+    return "SENT";
   } catch (err) {
     await db.emailLog.create({
       data: {
@@ -143,5 +146,6 @@ export async function sendDeliveryEmail(order: {
         orderId: order.id,
       },
     });
+    return "FAILED";
   }
 }

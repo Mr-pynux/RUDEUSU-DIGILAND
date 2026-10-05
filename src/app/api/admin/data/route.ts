@@ -9,7 +9,7 @@ export async function GET(req: Request) {
   if (!isAdminRequest(req)) return unauthorized();
 
   try {
-    const [products, codeCounts, accountCounts, orders, totalOrders, emails, emailsSent, emailsQueued] =
+    const [products, codeCounts, accountCounts, orders, totalOrders, awaitingOrders, emails, emailsSent, emailsQueued] =
       await Promise.all([
         db.product.findMany({
           orderBy: { createdAt: "desc" },
@@ -25,6 +25,7 @@ export async function GET(req: Request) {
         }),
         db.order.findMany({ orderBy: { createdAt: "desc" }, take: 60 }),
         db.order.count(),
+        db.order.count({ where: { status: "NEW" } }),
         db.emailLog.findMany({ orderBy: { createdAt: "desc" }, take: 50 }),
         db.emailLog.count({ where: { status: "SENT" } }),
         db.emailLog.count({ where: { status: "QUEUED" } }),
@@ -62,6 +63,7 @@ export async function GET(req: Request) {
       stats: {
         totalProducts: products.length,
         totalOrders,
+        awaitingOrders,
         revenue,
         codesAvailable,
         codesSold,
@@ -109,12 +111,17 @@ export async function GET(req: Request) {
         id: o.id,
         shortId: o.shortId,
         buyerEmail: o.buyerEmail,
+        buyerName: o.buyerName,
+        buyerPhone: o.buyerPhone,
+        buyerNotes: o.buyerNotes,
         items: JSON.parse(o.itemsJson),
         subtotal: o.subtotal,
         serviceFee: o.serviceFee,
         total: o.total,
         paymentMethod: o.paymentMethod,
         status: o.status,
+        emailStatus: o.emailStatus,
+        deliveredAt: o.deliveredAt ? o.deliveredAt.toISOString() : null,
         createdAt: o.createdAt.toISOString(),
       })),
       emails: emails.map((e) => ({
