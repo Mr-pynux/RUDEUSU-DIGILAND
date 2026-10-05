@@ -71,6 +71,7 @@ export async function POST(req: Request) {
         title: product.title,
         emoji: product.emoji,
         gradient: product.gradient,
+        imageUrl: product.imageUrl,
         quantity: qty,
         unitPrice: product.price,
         kind: product.deliveryKind === "ACCOUNT" ? "ACCOUNT" : "KEY",

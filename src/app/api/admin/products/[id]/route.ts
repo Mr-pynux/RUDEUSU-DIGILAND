@@ -34,6 +34,13 @@ export async function PATCH(req: Request, ctx: RouteCtx) {
     if (body.requirements !== undefined) data.requirements = String(body.requirements).trim().slice(0, 1000);
     if (body.instructions !== undefined) data.instructions = String(body.instructions).trim().slice(0, 2000);
     if (body.emoji !== undefined) data.emoji = String(body.emoji).slice(0, 8);
+    if (body.imageUrl !== undefined) {
+      const url = String(body.imageUrl).trim().slice(0, 500);
+      data.imageUrl =
+        url && ((url.startsWith("/") && !url.startsWith("//")) || /^https?:\/\//i.test(url))
+          ? url
+          : "";
+    }
     if (body.badge !== undefined) data.badge = String(body.badge).trim().slice(0, 20) || null;
     if (body.deliveryType !== undefined) {
       data.deliveryType = String(body.deliveryType) === "MANUAL" ? "MANUAL" : "INSTANT";

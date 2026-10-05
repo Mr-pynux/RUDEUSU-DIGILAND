@@ -30,6 +30,7 @@ model Product {
   oldPrice         Float?
   emoji            String
   gradient         String
+  imageUrl         String   @default("") // optional product image (uploaded in admin or pasted URL)
   badge            String?
   stock            Int
   sold             Int      @default(0)

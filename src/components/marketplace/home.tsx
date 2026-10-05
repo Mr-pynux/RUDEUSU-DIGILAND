@@ -238,6 +238,7 @@ export function FlashDeals() {
             <CoverTile
               emoji={p.emoji}
               gradient={p.gradient}
+              imageUrl={p.imageUrl}
               className="h-24 w-full"
               emojiClassName="text-4xl"
             />

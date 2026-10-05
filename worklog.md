@@ -103,3 +103,27 @@ Stage Summary:
 - Admin product panel now has a dedicated per-product stock place: paste serial keys and/or Gmail accounts (paired passwords) for EVERY product, both when creating and when editing; everything lands in that product's pools and is delivered to the buyer's Gmail when the owner presses "Send to Gmail"
 - Admin password unchanged: G''ds3FJFRVGF
 - Key files: src/components/marketplace/dialogs.tsx, src/components/admin/admin-panel.tsx, src/lib/i18n.ts, src/app/api/admin/products/route.ts
+
+---
+Task ID: 6
+Agent: main (Super Z)
+Task: ADD PRODUCT IMG PLACE IN ADMIN — product image upload in admin + storefront image display
+
+Work Log:
+- Prisma Product.imageUrl String @default("") added; db push + client regenerate
+- New API POST /api/admin/upload (admin-only, runtime nodejs): multipart field "file", validates mime (PNG/JPG/WEBP/GIF) + 4MB cap, saves to public/uploads/p<ts>-<rand>.<ext>, returns { url }
+- imageUrl threaded through: /api/catalog, /api/admin/data, POST /api/admin/products (parseImageUrl: local "/" path or http(s)), PATCH /api/admin/products/[id] (empty string clears), /api/checkout items snapshot
+- Types: ApiProduct.imageUrl, DeliveredItem.imageUrl?, CartLine.imageUrl?
+- CoverTile (ui-bits.tsx): optional imageUrl prop renders <img> absolute inset-0 object-cover over the gradient; emoji span hidden when image present — one change updated cards, detail hero, flash deals automatically
+- Storefront: product-card, product-detail, home flash deals pass imageUrl; store.addToCart carries imageUrl into CartLine; dialogs cart lines + success/order items show image thumbnails (emoji fallback)
+- Admin: AdminProduct type + imageUrl; products table row shows 9×9 image thumbnail when set (emoji gradient fallback); ProductDialog got a "Product image" place above the emoji/gradient pickers — live preview tile (shows current image or emoji), hidden file input + "Upload image" button (FormData POST with x-admin-key, client-side type/size checks, Loader2 uploading state, toast with URL), "Remove" button (rose), "Or paste an image link" Input (dir=ltr); imageUrl included in both create and update payloads; ImagePlus icon added
+- i18n: 10 new keys EN + AR (admin.productImage, productImageHint, uploadImage, uploadingImage, removeImage, imageUrl, imageSaved, imageFailed, imageTooBig, imageBadType)
+- Dev server restart required (stale Prisma client without imageUrl) via .zscripts/dev.sh
+- Verified: curl upload → 200 {url}, file serves 200 image/png; PATCH sets imageUrl; catalog returns it; agent-browser: product card + detail hero show uploaded test image; admin edit dialog shows image place with preview/upload/remove/URL; real browser file-input upload → preview swap + "Image uploaded" toast + PATCH persists new URL; Arabic RTL dialog "صورة المنتج" section fully mirrored with رفع صورة/إزالة/رابط inputs; no console errors; lint + src tsc clean
+- Test artifacts cleaned: Gemini imageUrl reset to "", uploaded test PNGs deleted from public/uploads + upload/, browser lang reset to EN
+
+Stage Summary:
+- Admin product panel now has a product-image place: upload a picture (or paste a link) for ANY product, new or existing; the picture replaces the emoji cover everywhere on the storefront (grid cards, detail hero, flash deals, cart lines, success/order items); emoji + gradient remain as automatic fallback
+- Upload endpoint is admin-token protected; files land in public/uploads and are served statically
+- Admin password unchanged: G''ds3FJFRVGF
+- Key files: src/app/api/admin/upload/route.ts, src/components/admin/admin-panel.tsx, src/components/marketplace/ui-bits.tsx, prisma/schema.prisma, src/lib/i18n.ts

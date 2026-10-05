@@ -33,6 +33,7 @@ export function ProductCard({ product }: { product: ApiProduct }) {
         <CoverTile
           emoji={product.emoji}
           gradient={product.gradient}
+          imageUrl={product.imageUrl}
           className="h-36 w-full"
           emojiClassName="text-6xl transition-transform duration-300 group-hover:scale-110"
         />

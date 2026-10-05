@@ -108,6 +108,7 @@ export const useMarketplace = create<MarketplaceState>()(
             title: product.title,
             emoji: product.emoji,
             gradient: product.gradient,
+            imageUrl: product.imageUrl,
             price: product.price,
             oldPrice: product.oldPrice,
             stock: product.stock,

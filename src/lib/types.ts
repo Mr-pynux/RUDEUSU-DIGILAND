@@ -29,6 +29,7 @@ export type ApiProduct = {
   oldPrice: number | null;
   emoji: string;
   gradient: string;
+  imageUrl: string;
   badge: string | null;
   stock: number;
   sold: number;
@@ -68,6 +69,7 @@ export type DeliveredItem = {
   title: string;
   emoji: string;
   gradient: string;
+  imageUrl?: string;
   quantity: number;
   unitPrice: number;
   kind: "KEY" | "ACCOUNT";
@@ -100,6 +102,7 @@ export type CartLine = {
   title: string;
   emoji: string;
   gradient: string;
+  imageUrl?: string;
   price: number;
   oldPrice: number | null;
   stock: number;

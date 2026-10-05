@@ -86,6 +86,7 @@ export async function GET(req: Request) {
         oldPrice: p.oldPrice,
         emoji: p.emoji,
         gradient: p.gradient,
+        imageUrl: p.imageUrl,
         badge: p.badge,
         stock: p.stock,
         sold: p.sold,

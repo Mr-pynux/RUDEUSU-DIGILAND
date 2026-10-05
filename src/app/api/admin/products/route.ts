@@ -30,6 +30,14 @@ function parseCodes(raw: unknown): string[] {
   return out;
 }
 
+function parseImageUrl(raw: unknown): string {
+  const url = String(raw ?? "").trim().slice(0, 500);
+  if (!url) return "";
+  if (url.startsWith("/") && !url.startsWith("//")) return url; // local /uploads/... path
+  if (/^https?:\/\//i.test(url)) return url; // external image link
+  return "";
+}
+
 export async function POST(req: Request) {
   if (!isAdminRequest(req)) return unauthorized();
 
@@ -45,6 +53,7 @@ export async function POST(req: Request) {
     const requirements: string = String(body?.requirements ?? "").trim().slice(0, 1000);
     const instructions: string = String(body?.instructions ?? "").trim().slice(0, 2000);
     const badge: string = String(body?.badge ?? "").trim().slice(0, 20);
+    const imageUrl: string = parseImageUrl(body?.imageUrl);
     const emoji: string = String(body?.emoji ?? "📦").slice(0, 8);
     const gradient: string = GRADIENTS.includes(String(body?.gradient))
       ? String(body?.gradient)
@@ -104,6 +113,7 @@ export async function POST(req: Request) {
         oldPrice,
         emoji,
         gradient,
+        imageUrl,
         badge: badge || null,
         stock,
         sold: 0,

@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   BadgeDollarSign,
   Boxes,
   Clock,
   Copy,
+  ImagePlus,
   KeyRound,
   Loader2,
   Lock,
@@ -66,6 +67,7 @@ export type AdminProduct = {
   oldPrice: number | null;
   emoji: string;
   gradient: string;
+  imageUrl: string;
   badge: string | null;
   stock: number;
   sold: number;
@@ -592,11 +594,19 @@ function ProductsTab({
                 <tr key={p.id} className="transition hover:bg-white/[0.03]">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2.5">
-                      <span
-                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br text-lg ${p.gradient}`}
-                      >
-                        {p.emoji}
-                      </span>
+                      {p.imageUrl ? (
+                        <img
+                          src={p.imageUrl}
+                          alt=""
+                          className="h-9 w-9 shrink-0 rounded-xl object-cover"
+                        />
+                      ) : (
+                        <span
+                          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br text-lg ${p.gradient}`}
+                        >
+                          {p.emoji}
+                        </span>
+                      )}
                       <div className="min-w-0">
                         <p className="max-w-64 truncate font-semibold text-foreground">{p.title}</p>
                         <p className="text-xs text-muted-foreground">{p.brand}</p>
@@ -712,6 +722,9 @@ function ProductDialog({
   const [stock, setStock] = useState(edit ? String(edit.stock) : "50");
   const [emoji, setEmoji] = useState(edit?.emoji ?? "📦");
   const [gradient, setGradient] = useState(edit?.gradient ?? ADMIN_GRADIENTS[0].id);
+  const [imageUrl, setImageUrl] = useState(edit?.imageUrl ?? "");
+  const [imageUploading, setImageUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [badge, setBadge] = useState(edit?.badge ?? "");
   const [shortDescription, setShortDescription] = useState(edit?.shortDescription ?? "");
   const [description, setDescription] = useState(edit?.description ?? "");
@@ -725,6 +738,42 @@ function ProductDialog({
   const [accEmails, setAccEmails] = useState("");
   const [accPasswords, setAccPasswords] = useState("");
   const [saving, setSaving] = useState(false);
+
+  /* ---- product image upload ---- */
+  const uploadImage = async (file: File) => {
+    if (imageUploading) return;
+    if (!file.type.startsWith("image/")) {
+      toast({ title: t("admin.imageBadType"), variant: "destructive" });
+      return;
+    }
+    if (file.size > 4 * 1024 * 1024) {
+      toast({ title: t("admin.imageTooBig"), variant: "destructive" });
+      return;
+    }
+    setImageUploading(true);
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem(TOKEN_KEY) ?? "" : "";
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/admin/upload", {
+        method: "POST",
+        headers: { "x-admin-key": token },
+        body: fd,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Upload failed");
+      setImageUrl(data.url);
+      toast({ title: t("admin.imageSaved"), description: data.url });
+    } catch (e) {
+      toast({
+        title: t("admin.imageFailed"),
+        description: e instanceof Error ? e.message : "",
+        variant: "destructive",
+      });
+    } finally {
+      setImageUploading(false);
+    }
+  };
 
   const save = async () => {
     if (saving) return;
@@ -740,6 +789,7 @@ function ProductDialog({
             oldPrice: oldPrice ? Number(oldPrice) : null,
             stock: Number(stock),
             emoji,
+            imageUrl,
             badge,
             shortDescription,
             description,
@@ -802,6 +852,7 @@ function ProductDialog({
             stock: Number(stock),
             emoji,
             gradient,
+            imageUrl,
             badge,
             shortDescription,
             description,
@@ -1005,6 +1056,79 @@ function ProductDialog({
                   {t("admin.kindAccountDesc")}
                 </p>
               </button>
+            </div>
+          </div>
+
+          {/* product image — picture shown on the storefront */}
+          <div className="rounded-2xl border border-fuchsia-400/25 bg-fuchsia-400/5 p-4">
+            <Label className="text-sm text-fuchsia-200">{t("admin.productImage")}</Label>
+            <p className="mb-3 mt-1 text-xs leading-relaxed text-muted-foreground">
+              {t("admin.productImageHint")}
+            </p>
+            <div className="flex flex-wrap items-start gap-4">
+              <div
+                className={`flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br ${ADMIN_GRADIENTS.find((g) => g.id === gradient)?.cls ?? ""}`}
+              >
+                {imageUrl ? (
+                  <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <span className="text-4xl">{emoji}</span>
+                )}
+              </div>
+              <div className="min-w-48 flex-1 space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,image/gif"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) void uploadImage(f);
+                      e.target.value = "";
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={imageUploading}
+                    className="h-9 gap-1.5 border-white/15 bg-white/5"
+                  >
+                    {imageUploading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <ImagePlus className="h-4 w-4" />
+                    )}
+                    {imageUploading ? t("admin.uploadingImage") : t("admin.uploadImage")}
+                  </Button>
+                  {imageUrl ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setImageUrl("")}
+                      className="h-9 gap-1.5 text-rose-300 hover:bg-rose-500/10"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      {t("admin.removeImage")}
+                    </Button>
+                  ) : null}
+                </div>
+                <div className="grid gap-1.5">
+                  <Label className="text-[11px] text-muted-foreground">
+                    {t("admin.imageUrl")}
+                  </Label>
+                  <Input
+                    value={imageUrl}
+                    onChange={(e) => setImageUrl(e.target.value)}
+                    placeholder="https://example.com/photo.jpg"
+                    className="h-9 border-white/10 bg-white/5"
+                    dir="ltr"
+                  />
+                </div>
+              </div>
             </div>
           </div>
 

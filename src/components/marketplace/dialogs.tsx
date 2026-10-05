@@ -102,11 +102,19 @@ export function CartSheet() {
                 key={line.slug}
                 className="flex gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3"
               >
-                <span
-                  className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br text-2xl ${line.gradient}`}
-                >
-                  {line.emoji}
-                </span>
+                {line.imageUrl ? (
+                  <img
+                    src={line.imageUrl}
+                    alt=""
+                    className="h-12 w-12 shrink-0 rounded-xl object-cover"
+                  />
+                ) : (
+                  <span
+                    className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br text-2xl ${line.gradient}`}
+                  >
+                    {line.emoji}
+                  </span>
+                )}
                 <div className="min-w-0 flex-1">
                   <p className="line-clamp-2 text-sm font-semibold leading-snug text-foreground">
                     {line.title}
@@ -500,11 +508,19 @@ export function SuccessDialog() {
                   className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"
                 >
                   <div className="flex items-center gap-3">
-                    <span
-                      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br text-2xl ${item.gradient}`}
-                    >
-                      {item.emoji}
-                    </span>
+                    {item.imageUrl ? (
+                      <img
+                        src={item.imageUrl}
+                        alt=""
+                        className="h-11 w-11 shrink-0 rounded-xl object-cover"
+                      />
+                    ) : (
+                      <span
+                        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br text-2xl ${item.gradient}`}
+                      >
+                        {item.emoji}
+                      </span>
+                    )}
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-bold text-foreground">{item.title}</p>
                       <p className="text-xs text-muted-foreground">

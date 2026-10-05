@@ -124,6 +124,7 @@ export function ProductDetail() {
             <CoverTile
               emoji={product.emoji}
               gradient={product.gradient}
+              imageUrl={product.imageUrl}
               className="h-56 w-full sm:h-64"
               emojiClassName="text-8xl"
             />

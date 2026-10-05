@@ -372,6 +372,16 @@ const en = {
   "admin.fallbackWarn": "The stock pool was empty for some items — fallback goods were sent instead. Please restock!",
   "admin.noProducts": "No products yet — create your first one.",
   "admin.gradient": "Cover gradient",
+  "admin.productImage": "Product image",
+  "admin.productImageHint": "Upload a picture buyers will see on the storefront (works for new and existing products). If empty, the emoji cover is used.",
+  "admin.uploadImage": "Upload image",
+  "admin.uploadingImage": "Uploading...",
+  "admin.removeImage": "Remove",
+  "admin.imageUrl": "Or paste an image link",
+  "admin.imageSaved": "Image uploaded",
+  "admin.imageFailed": "Image upload failed",
+  "admin.imageTooBig": "Image must be under 4 MB",
+  "admin.imageBadType": "Please choose an image file (PNG / JPG / WEBP / GIF)",
   "admin.loginHint": "Owner access only.",
 
   // admin — delivery kind / accounts / emails
@@ -788,6 +798,16 @@ const ar: Dict = {
   "admin.fallbackWarn": "كان مخزون المفاتيح فارغاً لبعض العناصر — أُرسلت بدائل مؤقتة بدلاً منها. يُنصح بإعادة التزويد!",
   "admin.noProducts": "لا منتجات بعد — أنشئ منتجك الأول.",
   "admin.gradient": "تدرّج الغلاف",
+  "admin.productImage": "صورة المنتج",
+  "admin.productImageHint": "ارفع صورة يشاهدها المشترون في المتجر (تعمل عند الإضافة والتعديل). إذا تركتها فارغة يُستخدم الإيموجي كغلاف.",
+  "admin.uploadImage": "رفع صورة",
+  "admin.uploadingImage": "جارٍ الرفع...",
+  "admin.removeImage": "إزالة",
+  "admin.imageUrl": "أو الصق رابط صورة",
+  "admin.imageSaved": "تم رفع الصورة",
+  "admin.imageFailed": "فشل رفع الصورة",
+  "admin.imageTooBig": "يجب أن يكون حجم الصورة أقل من 4 ميغابايت",
+  "admin.imageBadType": "اختر ملف صورة (PNG / JPG / WEBP / GIF)",
   "admin.loginHint": "وصول المالك فقط.",
 
   // admin — delivery kind / accounts / emails

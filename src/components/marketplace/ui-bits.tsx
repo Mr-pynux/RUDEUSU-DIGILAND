@@ -108,15 +108,17 @@ export function CopyButton({ value, label }: { value: string; label?: string }) 
   );
 }
 
-/** Gradient cover tile with product emoji — used on cards & detail pages */
+/** Gradient cover tile with product emoji or uploaded image — used on cards & detail pages */
 export function CoverTile({
   emoji,
   gradient,
+  imageUrl,
   className,
   emojiClassName,
 }: {
   emoji: string;
   gradient: string;
+  imageUrl?: string;
   className?: string;
   emojiClassName?: string;
 }) {
@@ -130,7 +132,23 @@ export function CoverTile({
     >
       <div className="absolute -left-6 -top-8 h-24 w-24 rounded-full bg-white/15 blur-2xl" />
       <div className="absolute -bottom-10 -right-6 h-28 w-28 rounded-full bg-black/20 blur-2xl" />
-      <span className={cn("relative text-6xl drop-shadow-lg", emojiClassName)}>{emoji}</span>
+      {imageUrl ? (
+        <img
+          src={imageUrl}
+          alt=""
+          loading="lazy"
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+      ) : null}
+      <span
+        className={cn(
+          "relative text-6xl drop-shadow-lg",
+          emojiClassName,
+          imageUrl && "hidden"
+        )}
+      >
+        {emoji}
+      </span>
     </div>
   );
 }
