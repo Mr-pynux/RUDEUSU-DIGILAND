@@ -130,7 +130,7 @@ export async function POST(req: Request) {
 
     // Optional Gmail accounts uploaded at creation (paired lists or combined lines)
     let accountsAdded = 0;
-    if (deliveryKind === "ACCOUNT") {
+    {
       const emails: string[] = Array.isArray(body?.emails)
         ? body.emails.map((e: unknown) => String(e).trim().toLowerCase())
         : String(body?.emails ?? "").split(/\r?\n/).map((l) => l.trim().toLowerCase());

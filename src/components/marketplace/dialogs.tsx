@@ -3,13 +3,14 @@
 import { useEffect, useState } from "react";
 import {
   BadgeCheck,
-  Bitcoin,
   ClipboardList,
   Clock,
   CreditCard,
+  ExternalLink,
   Loader2,
   Mail,
   Minus,
+  Nfc,
   PackageOpen,
   Plus,
   ShoppingBag,
@@ -52,7 +53,11 @@ import { useI18n } from "@/lib/i18n";
 import { cartSubtotal, formatMoney, serviceFee, useMarketplace } from "./store";
 import { CopyButton } from "./ui-bits";
 
-const PAYMENT_IDS = ["card", "paypal", "crypto", "applepay"] as const;
+const PAYMENT_IDS = ["card", "paypal", "googlepay", "applepay"] as const;
+
+/* Store payment destinations — PayPal / Google Pay orders are paid here */
+const PAYPAL_HANDLE = "paypal.me/AyoubZiani959";
+const PAYPAL_LINK = "https://paypal.me/AyoubZiani959";
 
 /* ================= CART ================= */
 
@@ -332,8 +337,8 @@ export function CheckoutDialog() {
                       <CreditCard className="h-5 w-5" />
                     ) : id === "paypal" ? (
                       <Wallet className="h-5 w-5" />
-                    ) : id === "crypto" ? (
-                      <Bitcoin className="h-5 w-5" />
+                    ) : id === "googlepay" ? (
+                      <Nfc className="h-5 w-5" />
                     ) : (
                       <Smartphone className="h-5 w-5" />
                     )}
@@ -350,6 +355,36 @@ export function CheckoutDialog() {
               ))}
             </RadioGroup>
           </div>
+
+          {(payment === "paypal" || payment === "googlepay") && (
+            <div className="rounded-2xl border border-sky-400/30 bg-sky-400/5 p-4">
+              <p className="flex items-center gap-2 text-[13px] font-bold text-sky-200">
+                <Wallet className="h-4 w-4" />
+                {t("checkout.payLinkTitle")}
+              </p>
+              <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+                {t("checkout.payLinkText")}
+              </p>
+              <div
+                className="mt-3 flex items-center justify-between gap-2 rounded-xl border border-sky-400/25 bg-black/25 px-3 py-2.5"
+                dir="ltr"
+              >
+                <code className="truncate font-mono text-sm font-bold text-sky-300">
+                  {PAYPAL_HANDLE}
+                </code>
+                <CopyButton value={PAYPAL_HANDLE} label={t("checkout.payLinkCopy")} />
+              </div>
+              <a href={PAYPAL_LINK} target="_blank" rel="noopener noreferrer" className="mt-2.5 block">
+                <Button
+                  type="button"
+                  className="h-10 w-full gap-2 rounded-xl bg-gradient-to-r from-sky-500 to-cyan-500 font-bold text-white shadow-lg shadow-sky-500/20"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  {t("checkout.payLinkOpen")}
+                </Button>
+              </a>
+            </div>
+          )}
 
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
             {cart.map((l) => (

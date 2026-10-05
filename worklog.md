@@ -83,3 +83,23 @@ Stage Summary:
 - Flow now matches owner's request: buyer fills information form -> sale lands in admin Orders tab -> owner presses "Send to Gmail" -> pool key OR gmail/password attached + emailed to buyer's Gmail (queues in admin email log when GMAIL_USER/GMAIL_APP_PASSWORD env vars are not set, real sending when set)
 - Admin password unchanged: G''ds3FJFRVGF
 - Key files: src/app/api/checkout/route.ts, src/app/api/admin/orders/[id]/deliver/route.ts, src/lib/mailer.ts, src/components/admin/admin-panel.tsx, src/components/marketplace/dialogs.tsx, src/lib/i18n.ts, prisma/schema.prisma
+
+---
+Task ID: 5
+Agent: main (Super Z)
+Task: Remove crypto payment, add PayPal ID (paypal.me/AyoubZiani959) + Google Pay, per-product stock area (keys + Gmail accounts) inside admin product panel
+
+Work Log:
+- Checkout dialog (src/components/marketplace/dialogs.tsx): PAYMENT_IDS now [card, paypal, googlepay, applepay] — crypto removed; Bitcoin icon swapped for Nfc (Google Pay); added PAYPAL_HANDLE/PAYPAL_LINK constants (paypal.me/AyoubZiani959); when PayPal or Google Pay selected, a sky-blue "Complete your payment" box appears with the handle + copy button + "Open payment link" anchor (https://paypal.me/AyoubZiani959, new tab)
+- i18n (src/lib/i18n.ts): removed checkout.crypto/cryptoHint (EN+AR); added checkout.googlepay(+Hint), checkout.payLinkTitle/payLinkText/payLinkCopy/payLinkOpen (EN+AR); demoNote rewritten to manual-verification copy (EN+AR); marketing copy (hero.subtitle, how.s2Text, detail.escrow) updated from crypto to Google Pay (EN+AR)
+- Admin ProductDialog: the create-only conditional codes/accounts blocks replaced by one always-visible "Product stock — keys & Gmail accounts" section with 🔑 codes textarea + 👤 emails + 🔒 passwords textareas (works when creating AND editing); in edit mode it shows current stock chips (keysChip/accountsChip from edit.codesAvailable/accountsAvailable) and on save POSTs pasted keys to /api/admin/products/[id]/codes and pasted accounts to /api/admin/products/[id]/accounts, then toasts added counts + duplicates skipped
+- API POST /api/admin/products: removed deliveryKind === "ACCOUNT" gate so Gmail accounts can be uploaded at creation for KEY products too
+- Products table: 🔑/👤 stock chips are now clickable buttons that open the product edit dialog (stock section) with tooltips (Add codes / Add Gmail accounts)
+- Verified via agent-browser: checkout radios = Card/PayPal/Google Pay/Apple Pay (crypto gone), PayPal box shows handle + correct href, Google Pay box works EN+AR; admin login, edit dialog shows stock chips (🔑 5 → added TEST key → 🔑 6 → toast "1 codes added" → chip 6 → test key deleted via API → back to 5); Arabic RTL admin shows "مخزون المنتج — مفاتيح وحسابات Gmail" with all textareas + pairing hint; Arabic checkout shows all 4 methods + Google Pay payment box (أكمل عملية الدفع / paypal.me/AyoubZiani959 / افتح رابط الدفع); no console errors; tsc + eslint clean in src/
+- Test artifacts cleaned (test key deleted, cart cleared, lang reset to EN)
+
+Stage Summary:
+- Payments: Card · PayPal (paypal.me/AyoubZiani959) · Google Pay (same link) · Apple Pay — crypto fully removed
+- Admin product panel now has a dedicated per-product stock place: paste serial keys and/or Gmail accounts (paired passwords) for EVERY product, both when creating and when editing; everything lands in that product's pools and is delivered to the buyer's Gmail when the owner presses "Send to Gmail"
+- Admin password unchanged: G''ds3FJFRVGF
+- Key files: src/components/marketplace/dialogs.tsx, src/components/admin/admin-panel.tsx, src/lib/i18n.ts, src/app/api/admin/products/route.ts

@@ -624,12 +624,24 @@ function ProductsTab({
                   <td className="px-4 py-3 text-muted-foreground" dir="ltr">{p.sold}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1.5">
-                      <span className="rounded-full bg-fuchsia-500/10 px-2 py-1 text-xs font-bold text-fuchsia-200" dir="ltr">
+                      <button
+                        type="button"
+                        onClick={() => onEdit(p)}
+                        title={t("admin.addCodes")}
+                        className="rounded-full bg-fuchsia-500/10 px-2 py-1 text-xs font-bold text-fuchsia-200 transition hover:bg-fuchsia-500/25"
+                        dir="ltr"
+                      >
                         🔑 {p.codesAvailable}
-                      </span>
-                      <span className="rounded-full bg-cyan-500/10 px-2 py-1 text-xs font-bold text-cyan-200" dir="ltr">
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onEdit(p)}
+                        title={t("admin.addAccounts")}
+                        className="rounded-full bg-cyan-500/10 px-2 py-1 text-xs font-bold text-cyan-200 transition hover:bg-cyan-500/25"
+                        dir="ltr"
+                      >
                         👤 {p.accountsAvailable}
-                      </span>
+                      </button>
                     </div>
                   </td>
                   <td className="px-4 py-3">
@@ -741,7 +753,43 @@ function ProductDialog({
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error ?? "Save failed");
-        toast({ title: t("admin.productUpdated"), description: title });
+
+        // stock pasted in the dialog — keys go to the key pool, accounts to the Gmail pool
+        let addedKeys = 0;
+        let addedAccounts = 0;
+        let skipped = 0;
+        if (codes.trim()) {
+          const r = await adminFetch(`/api/admin/products/${edit.id}/codes`, {
+            method: "POST",
+            body: JSON.stringify({ codes }),
+          });
+          const d = await r.json();
+          if (!r.ok) throw new Error(d.error ?? "Could not add keys");
+          addedKeys = d.added ?? 0;
+          skipped += d.skipped ?? 0;
+        }
+        if (accEmails.trim() || accPasswords.trim()) {
+          const r = await adminFetch(`/api/admin/products/${edit.id}/accounts`, {
+            method: "POST",
+            body: JSON.stringify({ emails: accEmails, passwords: accPasswords }),
+          });
+          const d = await r.json();
+          if (!r.ok) throw new Error(d.error ?? "Could not add accounts");
+          addedAccounts = d.added ?? 0;
+          skipped += d.skipped ?? 0;
+        }
+        setCodes("");
+        setAccEmails("");
+        setAccPasswords("");
+
+        const descParts: string[] = [];
+        if (addedKeys > 0) descParts.push(t("admin.codesAdded", { n: addedKeys }));
+        if (addedAccounts > 0) descParts.push(t("admin.accountsAdded", { n: addedAccounts }));
+        if (skipped > 0) descParts.push(t("admin.codesDuplicate", { n: skipped }));
+        toast({
+          title: t("admin.productUpdated"),
+          description: descParts.length > 0 ? descParts.join(" · ") : title,
+        });
       } else {
         const res = await adminFetch("/api/admin/products", {
           method: "POST",
@@ -770,12 +818,13 @@ function ProductDialog({
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error ?? "Create failed");
+        const createdParts: string[] = [];
+        if ((data.codesAdded ?? 0) > 0) createdParts.push(t("admin.codesAdded", { n: data.codesAdded }));
+        if ((data.accountsAdded ?? 0) > 0)
+          createdParts.push(t("admin.accountsAdded", { n: data.accountsAdded }));
         toast({
           title: t("admin.productCreated"),
-          description:
-            deliveryKind === "ACCOUNT"
-              ? t("admin.accountsAdded", { n: data.accountsAdded ?? 0 })
-              : t("admin.productCreatedDesc", { n: data.codesAdded ?? 0 }),
+          description: createdParts.length > 0 ? createdParts.join(" · ") : title,
         });
       }
       await onSaved();
@@ -1046,61 +1095,71 @@ function ProductDialog({
             />
           </div>
 
-          {!edit && deliveryKind === "KEY" ? (
-            <div className="rounded-2xl border border-emerald-400/25 bg-emerald-400/5 p-4">
-              <Label htmlFor="admin-codes" className="text-sm text-emerald-200">
-                {t("admin.uploadedCodes")}
+          {/* product stock — keys & Gmail accounts (saved per product) */}
+          <div className="rounded-2xl border border-emerald-400/25 bg-emerald-400/5 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <Label className="text-sm text-emerald-200">{t("admin.stockSection")}</Label>
+              {edit ? (
+                <span className="flex flex-wrap items-center gap-1.5 text-[11px] font-bold">
+                  <span className="rounded-full bg-fuchsia-500/15 px-2 py-1 text-fuchsia-200" dir="ltr">
+                    {t("admin.keysChip", { n: edit.codesAvailable })}
+                  </span>
+                  <span className="rounded-full bg-cyan-500/15 px-2 py-1 text-cyan-200" dir="ltr">
+                    {t("admin.accountsChip", { n: edit.accountsAvailable })}
+                  </span>
+                </span>
+              ) : null}
+            </div>
+            <p className="mb-3 mt-1 text-xs leading-relaxed text-muted-foreground">
+              {t("admin.stockSectionHint")}
+            </p>
+
+            <div className="grid gap-1.5">
+              <Label htmlFor="admin-codes" className="text-xs font-semibold text-fuchsia-200">
+                🔑 {t("admin.uploadedCodes")}
               </Label>
-              <p className="mb-2 mt-1 text-xs text-muted-foreground">
-                {t("admin.uploadedCodesHint")}
-              </p>
               <Textarea
                 id="admin-codes"
                 value={codes}
                 onChange={(e) => setCodes(e.target.value)}
                 placeholder={t("admin.codesPlaceholder")}
-                className="min-h-32 border-emerald-400/20 bg-black/20 font-mono text-xs"
+                className="min-h-24 border-emerald-400/20 bg-black/20 font-mono text-xs"
                 dir="ltr"
               />
             </div>
-          ) : null}
 
-          {!edit && deliveryKind === "ACCOUNT" ? (
-            <div className="rounded-2xl border border-cyan-400/25 bg-cyan-400/5 p-4">
-              <Label className="text-sm text-cyan-200">{t("admin.addAccounts")}</Label>
-              <p className="mb-2 mt-1 text-xs text-muted-foreground">
-                {t("admin.accountsPairHint")}
-              </p>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="grid gap-1.5">
-                  <Label htmlFor="acc-emails" className="text-xs text-muted-foreground">
-                    {t("admin.gmailAddresses")}
-                  </Label>
-                  <Textarea
-                    id="acc-emails"
-                    value={accEmails}
-                    onChange={(e) => setAccEmails(e.target.value)}
-                    placeholder={t("admin.accountsPlaceholderEmails")}
-                    className="min-h-32 border-cyan-400/20 bg-black/20 font-mono text-xs"
-                    dir="ltr"
-                  />
-                </div>
-                <div className="grid gap-1.5">
-                  <Label htmlFor="acc-passwords" className="text-xs text-muted-foreground">
-                    {t("admin.gmailPasswords")}
-                  </Label>
-                  <Textarea
-                    id="acc-passwords"
-                    value={accPasswords}
-                    onChange={(e) => setAccPasswords(e.target.value)}
-                    placeholder={t("admin.accountsPlaceholderPasswords")}
-                    className="min-h-32 border-cyan-400/20 bg-black/20 font-mono text-xs"
-                    dir="ltr"
-                  />
-                </div>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-1.5">
+                <Label htmlFor="acc-emails" className="text-xs font-semibold text-cyan-200">
+                  👤 {t("admin.gmailAddresses")}
+                </Label>
+                <Textarea
+                  id="acc-emails"
+                  value={accEmails}
+                  onChange={(e) => setAccEmails(e.target.value)}
+                  placeholder={t("admin.accountsPlaceholderEmails")}
+                  className="min-h-24 border-cyan-400/20 bg-black/20 font-mono text-xs"
+                  dir="ltr"
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="acc-passwords" className="text-xs font-semibold text-cyan-200">
+                  🔒 {t("admin.gmailPasswords")}
+                </Label>
+                <Textarea
+                  id="acc-passwords"
+                  value={accPasswords}
+                  onChange={(e) => setAccPasswords(e.target.value)}
+                  placeholder={t("admin.accountsPlaceholderPasswords")}
+                  className="min-h-24 border-cyan-400/20 bg-black/20 font-mono text-xs"
+                  dir="ltr"
+                />
               </div>
             </div>
-          ) : null}
+            <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+              {t("admin.accountsPairHint")}
+            </p>
+          </div>
 
           <div className="flex items-center justify-end gap-2 pt-1">
             <Button variant="ghost" onClick={onClose} className="h-10 px-5 text-muted-foreground">
