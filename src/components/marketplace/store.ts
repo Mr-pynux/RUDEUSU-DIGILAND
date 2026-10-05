@@ -9,7 +9,7 @@ import type {
   CatalogResponse,
 } from "@/lib/types";
 
-export type View = { name: "home" } | { name: "product"; slug: string };
+export type View = { name: "home" } | { name: "product"; slug: string } | { name: "admin" };
 
 type MarketplaceState = {
   catalog: CatalogResponse | null;
@@ -30,6 +30,7 @@ type MarketplaceState = {
   loadCatalog: () => Promise<void>;
   goHome: () => void;
   openProduct: (slug: string) => void;
+  goAdmin: () => void;
 
   addToCart: (product: ApiProduct, qty?: number) => boolean;
   setQty: (slug: string, qty: number) => void;
@@ -85,6 +86,11 @@ export const useMarketplace = create<MarketplaceState>()(
 
       openProduct: (slug: string) => {
         set({ view: { name: "product", slug } });
+        if (typeof window !== "undefined") window.scrollTo({ top: 0 });
+      },
+
+      goAdmin: () => {
+        set({ view: { name: "admin" } });
         if (typeof window !== "undefined") window.scrollTo({ top: 0 });
       },
 

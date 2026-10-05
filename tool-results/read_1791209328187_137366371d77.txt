@@ -1,0 +1,810 @@
+     1→"use client";
+     2→
+     3→import { useEffect, useState } from "react";
+     4→import {
+     5→  BadgeCheck,
+     6→  Bitcoin,
+     7→  CreditCard,
+     8→  Loader2,
+     9→  Mail,
+    10→  Minus,
+    11→  PackageOpen,
+    12→  Plus,
+    13→  Smartphone,
+    14→  ShoppingCart,
+    15→  Trash2,
+    16→  Wallet,
+    17→  X,
+    18→  Zap,
+    19→} from "lucide-react";
+    20→import { Button } from "@/components/ui/button";
+    21→import {
+    22→  Dialog,
+    23→  DialogContent,
+    24→  DialogDescription,
+    25→  DialogHeader,
+    26→  DialogTitle,
+    27→} from "@/components/ui/dialog";
+    28→import { Input } from "@/components/ui/input";
+    29→import { Label } from "@/components/ui/label";
+    30→import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+    31→import {
+    32→  Select,
+    33→  SelectContent,
+    34→  SelectItem,
+    35→  SelectTrigger,
+    36→  SelectValue,
+    37→} from "@/components/ui/select";
+    38→import { Separator } from "@/components/ui/separator";
+    39→import {
+    40→  Sheet,
+    41→  SheetContent,
+    42→  SheetDescription,
+    43→  SheetHeader,
+    44→  SheetTitle,
+    45→} from "@/components/ui/sheet";
+    46→import { Textarea } from "@/components/ui/textarea";
+    47→import { useToast } from "@/hooks/use-toast";
+    48→import type { ApiOrder } from "@/lib/types";
+    49→import {
+    50→  cartSubtotal,
+    51→  formatMoney,
+    52→  serviceFee,
+    53→  useMarketplace,
+    54→} from "./store";
+    55→import { CopyButton } from "./ui-bits";
+    56→
+    57→const PAYMENTS = [
+    58→  { id: "card", label: "Credit / Debit Card", hint: "Visa · Mastercard", icon: CreditCard },
+    59→  { id: "paypal", label: "PayPal", hint: "Buyer protection", icon: Wallet },
+    60→  { id: "crypto", label: "Crypto", hint: "BTC · USDT · TON", icon: Bitcoin },
+    61→  { id: "applepay", label: "Apple Pay", hint: "One-tap checkout", icon: Smartphone },
+    62→];
+    63→
+    64→/* ================= CART ================= */
+    65→
+    66→export function CartSheet() {
+    67→  const open = useMarketplace((s) => s.cartOpen);
+    68→  const setOpen = useMarketplace((s) => s.setCartOpen);
+    69→  const cart = useMarketplace((s) => s.cart);
+    70→  const setQty = useMarketplace((s) => s.setQty);
+    71→  const removeFromCart = useMarketplace((s) => s.removeFromCart);
+    72→  const setCheckoutOpen = useMarketplace((s) => s.setCheckoutOpen);
+    73→
+    74→  const subtotal = cartSubtotal(cart);
+    75→  const fee = serviceFee(subtotal);
+    76→
+    77→  return (
+    78→    <Sheet open={open} onOpenChange={setOpen}>
+    79→      <SheetContent side="right" className="flex w-full flex-col gap-0 border-white/10 bg-[oklch(0.15_0.02_305)] p-0 sm:max-w-md">
+    80→        <SheetHeader className="border-b border-white/10 px-5 py-4">
+    81→          <SheetTitle className="flex items-center gap-2 text-lg text-white">
+    82→            <ShoppingCart className="h-5 w-5 text-fuchsia-300" />
+    83→            Your cart
+    84→          </SheetTitle>
+    85→          <SheetDescription className="text-xs text-muted-foreground">
+    86→            Digital goods — delivered to your email right after payment.
+    87→          </SheetDescription>
+    88→        </SheetHeader>
+    89→
+    90→        <div className="nice-scroll flex-1 space-y-3 overflow-y-auto px-5 py-4">
+    91→          {cart.length === 0 ? (
+    92→            <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
+    93→              <span className="text-5xl">🛒</span>
+    94→              <p className="font-semibold text-foreground">Your cart is empty</p>
+    95→              <p className="max-w-60 text-sm text-muted-foreground">
+    96→                Add AI subscriptions, IPTV or keys and check out in seconds.
+    97→              </p>
+    98→            </div>
+    99→          ) : (
+   100→            cart.map((line) => (
+   101→              <div
+   102→                key={line.slug}
+   103→                className="flex gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3"
+   104→              >
+   105→                <span
+   106→                  className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br text-2xl ${line.gradient}`}
+   107→                >
+   108→                  {line.emoji}
+   109→                </span>
+   110→                <div className="min-w-0 flex-1">
+   111→                  <p className="line-clamp-2 text-sm font-semibold leading-snug text-foreground">
+   112→                    {line.title}
+   113→                  </p>
+   114→                  <div className="mt-2 flex items-center justify-between gap-2">
+   115→                    <div className="flex items-center rounded-full border border-white/10 bg-white/5">
+   116→                      <button
+   117→                        onClick={() => setQty(line.slug, line.quantity - 1)}
+   118→                        className="flex h-7 w-7 items-center justify-center rounded-full hover:bg-white/10"
+   119→                        aria-label="Decrease quantity"
+   120→                      >
+   121→                        <Minus className="h-3 w-3" />
+   122→                      </button>
+   123→                      <span className="w-7 text-center text-xs font-bold">{line.quantity}</span>
+   124→                      <button
+   125→                        onClick={() => setQty(line.slug, line.quantity + 1)}
+   126→                        className="flex h-7 w-7 items-center justify-center rounded-full hover:bg-white/10"
+   127→                        aria-label="Increase quantity"
+   128→                      >
+   129→                        <Plus className="h-3 w-3" />
+   130→                      </button>
+   131→                    </div>
+   132→                    <span className="text-sm font-bold text-emerald-300">
+   133→                      {formatMoney(line.price * line.quantity)}
+   134→                    </span>
+   135→                  </div>
+   136→                </div>
+   137→                <button
+   138→                  onClick={() => removeFromCart(line.slug)}
+   139→                  className="h-fit rounded-full p-1.5 text-muted-foreground transition hover:bg-rose-500/15 hover:text-rose-300"
+   140→                  aria-label={`Remove ${line.title} from cart`}
+   141→                >
+   142→                  <Trash2 className="h-4 w-4" />
+   143→                </button>
+   144→              </div>
+   145→            ))
+   146→          )}
+   147→        </div>
+   148→
+   149→        {cart.length > 0 ? (
+   150→          <div className="space-y-3 border-t border-white/10 px-5 py-4">
+   151→            <div className="space-y-1.5 text-sm">
+   152→              <div className="flex justify-between text-muted-foreground">
+   153→                <span>Subtotal</span>
+   154→                <span className="text-foreground">{formatMoney(subtotal)}</span>
+   155→              </div>
+   156→              <div className="flex justify-between text-muted-foreground">
+   157→                <span>Service fee (5% + $0.30)</span>
+   158→                <span className="text-foreground">{formatMoney(fee)}</span>
+   159→              </div>
+   160→              <Separator className="bg-white/10" />
+   161→              <div className="flex justify-between text-base font-bold text-white">
+   162→                <span>Total</span>
+   163→                <span>{formatMoney(subtotal + fee)}</span>
+   164→              </div>
+   165→            </div>
+   166→            <Button
+   167→              onClick={() => {
+   168→                setOpen(false);
+   169→                setCheckoutOpen(true);
+   170→              }}
+   171→              className="h-12 w-full rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 text-[15px] font-bold text-white shadow-lg shadow-fuchsia-500/25 hover:from-violet-400 hover:to-fuchsia-400"
+   172→            >
+   173→              <Zap className="h-4 w-4" />
+   174→              Checkout — {formatMoney(subtotal + fee)}
+   175→            </Button>
+   176→          </div>
+   177→        ) : null}
+   178→      </SheetContent>
+   179→    </Sheet>
+   180→  );
+   181→}
+   182→
+   183→/* ================= CHECKOUT ================= */
+   184→
+   185→export function CheckoutDialog() {
+   186→  const open = useMarketplace((s) => s.checkoutOpen);
+   187→  const setOpen = useMarketplace((s) => s.setCheckoutOpen);
+   188→  const cart = useMarketplace((s) => s.cart);
+   189→  const clearCart = useMarketplace((s) => s.clearCart);
+   190→  const setSuccessOrder = useMarketplace((s) => s.setSuccessOrder);
+   191→  const lastEmail = useMarketplace((s) => s.lastEmail);
+   192→  const setLastEmail = useMarketplace((s) => s.setLastEmail);
+   193→  const { toast } = useToast();
+   194→
+   195→  const [email, setEmail] = useState("");
+   196→  const [payment, setPayment] = useState("card");
+   197→  const [submitting, setSubmitting] = useState(false);
+   198→  const [error, setError] = useState<string | null>(null);
+   199→
+   200→  useEffect(() => {
+   201→    if (open) {
+   202→      setEmail(lastEmail);
+   203→      setError(null);
+   204→    }
+   205→  }, [open, lastEmail]);
+   206→
+   207→  const subtotal = cartSubtotal(cart);
+   208→  const fee = serviceFee(subtotal);
+   209→
+   210→  const pay = async () => {
+   211→    if (submitting) return;
+   212→    setSubmitting(true);
+   213→    setError(null);
+   214→    try {
+   215→      const res = await fetch("/api/checkout", {
+   216→        method: "POST",
+   217→        headers: { "Content-Type": "application/json" },
+   218→        body: JSON.stringify({
+   219→          email,
+   220→          paymentMethod: payment,
+   221→          items: cart.map((l) => ({ slug: l.slug, quantity: l.quantity })),
+   222→        }),
+   223→      });
+   224→      const data = await res.json();
+   225→      if (!res.ok) throw new Error(data.error ?? "Payment failed");
+   226→      setOpen(false);
+   227→      setSuccessOrder(data.order as ApiOrder);
+   228→      setLastEmail(email);
+   229→      clearCart();
+   230→    } catch (e) {
+   231→      const msg = e instanceof Error ? e.message : "Payment failed";
+   232→      setError(msg);
+   233→      toast({ title: "Payment failed", description: msg, variant: "destructive" });
+   234→    } finally {
+   235→      setSubmitting(false);
+   236→    }
+   237→  };
+   238→
+   239→  return (
+   240→    <Dialog open={open} onOpenChange={setOpen}>
+   241→      <DialogContent className="max-h-[92vh] overflow-y-auto border-white/10 bg-[oklch(0.16_0.02_305)] sm:max-w-lg">
+   242→        <DialogHeader>
+   243→          <DialogTitle className="flex items-center gap-2 text-xl text-white">
+   244→            <Zap className="h-5 w-5 text-amber-300" />
+   245→            Secure checkout
+   246→          </DialogTitle>
+   247→          <DialogDescription>
+   248→            Goods are delivered to your email + on screen immediately after payment.
+   249→          </DialogDescription>
+   250→        </DialogHeader>
+   251→
+   252→        <div className="space-y-4">
+   253→          <div className="grid gap-1.5">
+   254→            <Label htmlFor="buyer-email" className="text-sm text-foreground/90">
+   255→              Delivery email
+   256→            </Label>
+   257→            <Input
+   258→              id="buyer-email"
+   259→              type="email"
+   260→              value={email}
+   261→              onChange={(e) => setEmail(e.target.value)}
+   262→              placeholder="you@example.com"
+   263→              className="h-11 border-white/10 bg-white/5"
+   264→            />
+   265→          </div>
+   266→
+   267→          <div className="grid gap-1.5">
+   268→            <Label className="text-sm text-foreground/90">Payment method</Label>
+   269→            <RadioGroup
+   270→              value={payment}
+   271→              onValueChange={setPayment}
+   272→              className="grid grid-cols-2 gap-2"
+   273→            >
+   274→              {PAYMENTS.map((p) => (
+   275→                <Label
+   276→                  key={p.id}
+   277→                  htmlFor={`pay-${p.id}`}
+   278→                  className={`flex cursor-pointer items-center gap-3 rounded-2xl border p-3.5 transition ${
+   279→                    payment === p.id
+   280→                      ? "border-fuchsia-400/60 bg-fuchsia-500/10"
+   281→                      : "border-white/10 bg-white/[0.03] hover:border-white/25"
+   282→                  }`}
+   283→                >
+   284→                  <RadioGroupItem id={`pay-${p.id}`} value={p.id} className="sr-only" />
+   285→                  <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/5 text-fuchsia-200">
+   286→                    <p.icon className="h-5 w-5" />
+   287→                  </span>
+   288→                  <span>
+   289→                    <span className="block text-[13px] font-bold text-foreground">{p.label}</span>
+   290→                    <span className="block text-[11px] text-muted-foreground">{p.hint}</span>
+   291→                  </span>
+   292→                </Label>
+   293→              ))}
+   294→            </RadioGroup>
+   295→          </div>
+   296→
+   297→          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+   298→            {cart.map((l) => (
+   299→              <div key={l.slug} className="flex items-center justify-between gap-2 py-1 text-sm">
+   300→                <span className="min-w-0 flex-1 truncate text-foreground/85">
+   301→                  {l.emoji} {l.title} <span className="text-muted-foreground">×{l.quantity}</span>
+   302→                </span>
+   303→                <span className="font-semibold text-foreground/85">
+   304→                  {formatMoney(l.price * l.quantity)}
+   305→                </span>
+   306→              </div>
+   307→            ))}
+   308→            <Separator className="my-2 bg-white/10" />
+   309→            <div className="flex justify-between py-0.5 text-xs text-muted-foreground">
+   310→              <span>Service fee</span>
+   311→              <span>{formatMoney(fee)}</span>
+   312→            </div>
+   313→            <div className="flex justify-between pt-1 text-base font-bold text-white">
+   314→              <span>Total</span>
+   315→              <span>{formatMoney(subtotal + fee)}</span>
+   316→            </div>
+   317→          </div>
+   318→
+   319→          {error ? (
+   320→            <p className="rounded-xl border border-rose-400/30 bg-rose-500/10 px-3.5 py-2.5 text-sm text-rose-200">
+   321→              {error}
+   322→            </p>
+   323→          ) : null}
+   324→
+   325→          <Button
+   326→            onClick={pay}
+   327→            disabled={submitting || cart.length === 0}
+   328→            className="h-12 w-full rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 text-[15px] font-bold text-white shadow-lg shadow-fuchsia-500/25 hover:from-violet-400 hover:to-fuchsia-400"
+   329→          >
+   330→            {submitting ? (
+   331→              <>
+   332→                <Loader2 className="h-4 w-4 animate-spin" /> Processing payment...
+   333→              </>
+   334→            ) : (
+   335→              <>🔒 Pay {formatMoney(subtotal + fee)}</>
+   336→            )}
+   337→          </Button>
+   338→          <p className="text-center text-[11px] text-muted-foreground">
+   339→            Demo checkout — no real money is charged. escrow protected · SSL secured
+   340→          </p>
+   341→        </div>
+   342→      </DialogContent>
+   343→    </Dialog>
+   344→  );
+   345→}
+   346→
+   347→/* ================= ORDER SUCCESS / DELIVERY ================= */
+   348→
+   349→export function SuccessDialog() {
+   350→  const order = useMarketplace((s) => s.successOrder);
+   351→  const setOrder = useMarketplace((s) => s.setSuccessOrder);
+   352→  const setOrdersOpen = useMarketplace((s) => s.setOrdersOpen);
+   353→  const setCartOpen = useMarketplace((s) => s.setCartOpen);
+   354→
+   355→  return (
+   356→    <Dialog open={!!order} onOpenChange={(o) => !o && setOrder(null)}>
+   357→      <DialogContent className="max-h-[92vh] overflow-y-auto border-white/10 bg-[oklch(0.16_0.02_305)] sm:max-w-xl">
+   358→        {order ? (
+   359→          <>
+   360→            <DialogHeader>
+   361→              <div className="mx-auto mb-1 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/15">
+   362→                <BadgeCheck className="h-9 w-9 text-emerald-400" />
+   363→              </div>
+   364→              <DialogTitle className="text-center text-2xl text-white">
+   365→                Payment successful — goods delivered! 🎉
+   366→              </DialogTitle>
+   367→              <DialogDescription className="text-center">
+   368→                Order <b className="font-mono text-emerald-300">{order.shortId}</b> · a copy was
+   369→                sent to <b className="text-foreground/90">{order.buyerEmail}</b>
+   370→              </DialogDescription>
+   371→            </DialogHeader>
+   372→
+   373→            <div className="space-y-3">
+   374→              {order.items.map((item) => (
+   375→                <div
+   376→                  key={item.slug}
+   377→                  className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"
+   378→                >
+   379→                  <div className="flex items-center gap-3">
+   380→                    <span
+   381→                      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br text-2xl ${item.gradient}`}
+   382→                    >
+   383→                      {item.emoji}
+   384→                    </span>
+   385→                    <div className="min-w-0 flex-1">
+   386→                      <p className="truncate text-sm font-bold text-foreground">{item.title}</p>
+   387→                      <p className="text-xs text-muted-foreground">
+   388→                        Qty {item.quantity} · {item.sellerName} · {formatMoney(item.unitPrice)} each
+   389→                      </p>
+   390→                    </div>
+   391→                  </div>
+   392→                  <div className="mt-3 space-y-2">
+   393→                    {item.codes.map((code, i) => (
+   394→                      <div
+   395→                        key={`${code}-${i}`}
+   396→                        className="flex items-center justify-between gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/5 px-3 py-2"
+   397→                      >
+   398→                        <code className="truncate font-mono text-sm font-bold tracking-wider text-emerald-300">
+   399→                          {code}
+   400→                        </code>
+   401→                        <CopyButton value={code} label={`Copy code ${i + 1}`} />
+   402→                      </div>
+   403→                    ))}
+   404→                  </div>
+   405→                  <details className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+   406→                    <summary className="cursor-pointer text-xs font-bold uppercase tracking-wide text-fuchsia-300">
+   407→                      How to activate
+   408→                    </summary>
+   409→                    <p className="mt-2 whitespace-pre-line text-[13px] leading-relaxed text-muted-foreground">
+   410→                      {item.instructions}
+   411→                    </p>
+   412→                  </details>
+   413→                </div>
+   414→              ))}
+   415→
+   416→              <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm">
+   417→                <span className="text-muted-foreground">
+   418→                  Paid via <b className="uppercase text-foreground/80">{order.paymentMethod}</b>
+   419→                </span>
+   420→                <span className="text-lg font-bold text-white">{formatMoney(order.total)}</span>
+   421→              </div>
+   422→
+   423→              <div className="grid grid-cols-2 gap-2.5 pt-1">
+   424→                <Button
+   425→                  onClick={() => {
+   426→                    setOrder(null);
+   427→                    setOrdersOpen(true);
+   428→                  }}
+   429→                  variant="outline"
+   430→                  className="h-11 rounded-2xl border-white/15 bg-white/5 font-semibold"
+   431→                >
+   432→                  <Mail className="h-4 w-4" />
+   433→                  My purchases
+   434→                </Button>
+   435→                <Button
+   436→                  onClick={() => {
+   437→                    setOrder(null);
+   438→                    setCartOpen(false);
+   439→                  }}
+   440→                  className="h-11 rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 font-bold text-white"
+   441→                >
+   442→                  Continue shopping
+   443→                </Button>
+   444→              </div>
+   445→            </div>
+   446→          </>
+   447→        ) : null}
+   448→      </DialogContent>
+   449→    </Dialog>
+   450→  );
+   451→}
+   452→
+   453→/* ================= MY ORDERS ================= */
+   454→
+   455→type FetchedOrders = { orders: ApiOrder[]; error?: string };
+   456→
+   457→export function OrdersDialog() {
+   458→  const open = useMarketplace((s) => s.ordersOpen);
+   459→  const setOpen = useMarketplace((s) => s.setOrdersOpen);
+   460→  const lastEmail = useMarketplace((s) => s.lastEmail);
+   461→  const { toast } = useToast();
+   462→
+   463→  const [email, setEmail] = useState("");
+   464→  const [orders, setOrders] = useState<ApiOrder[] | null>(null);
+   465→  const [loading, setLoading] = useState(false);
+   466→
+   467→  useEffect(() => {
+   468→    if (open) {
+   469→      setEmail(lastEmail);
+   470→      setOrders(null);
+   471→    }
+   472→  }, [open, lastEmail]);
+   473→
+   474→  const lookup = async () => {
+   475→    if (loading) return;
+   476→    setLoading(true);
+   477→    try {
+   478→      const res = await fetch(`/api/orders?email=${encodeURIComponent(email)}`);
+   479→      const data = (await res.json()) as FetchedOrders;
+   480→      if (!res.ok) throw new Error(data.error ?? "Lookup failed");
+   481→      setOrders(data.orders);
+   482→      if (data.orders.length === 0) {
+   483→        toast({ title: "No orders yet", description: `Nothing found for ${email}` });
+   484→      }
+   485→    } catch (e) {
+   486→      toast({
+   487→        title: "Lookup failed",
+   488→        description: e instanceof Error ? e.message : "Try again",
+   489→        variant: "destructive",
+   490→      });
+   491→    } finally {
+   492→      setLoading(false);
+   493→    }
+   494→  };
+   495→
+   496→  return (
+   497→    <Dialog open={open} onOpenChange={setOpen}>
+   498→      <DialogContent className="max-h-[92vh] overflow-y-auto border-white/10 bg-[oklch(0.16_0.02_305)] sm:max-w-xl">
+   499→        <DialogHeader>
+   500→          <DialogTitle className="flex items-center gap-2 text-xl text-white">
+   501→            <PackageOpen className="h-5 w-5 text-fuchsia-300" />
+   502→            My purchases
+   503→          </DialogTitle>
+   504→          <DialogDescription>
+   505→            Enter the email you used at checkout to re-open your codes anytime.
+   506→          </DialogDescription>
+   507→        </DialogHeader>
+   508→
+   509→        <div className="flex gap-2">
+   510→          <Input
+   511→            type="email"
+   512→            value={email}
+   513→            onChange={(e) => setEmail(e.target.value)}
+   514→            placeholder="you@example.com"
+   515→            className="h-11 border-white/10 bg-white/5"
+   516→            onKeyDown={(e) => e.key === "Enter" && lookup()}
+   517→          />
+   518→          <Button
+   519→            onClick={lookup}
+   520→            disabled={loading}
+   521→            className="h-11 shrink-0 rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 font-bold text-white"
+   522→          >
+   523→            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Find orders"}
+   524→          </Button>
+   525→        </div>
+   526→
+   527→        <div className="nice-scroll max-h-[50vh] space-y-3 overflow-y-auto pr-1">
+   528→          {orders?.map((o) => (
+   529→            <div key={o.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+   530→              <div className="flex flex-wrap items-center justify-between gap-2">
+   531→                <p className="font-mono text-sm font-bold text-emerald-300">{o.shortId}</p>
+   532→                <p className="text-xs text-muted-foreground">
+   533→                  {new Date(o.createdAt).toLocaleString()} · {o.paymentMethod.toUpperCase()}
+   534→                </p>
+   535→              </div>
+   536→              {o.items.map((item) => (
+   537→                <div key={item.slug} className="mt-3 space-y-1.5">
+   538→                  <p className="text-[13px] font-semibold text-foreground/90">
+   539→                    {item.emoji} {item.title} ×{item.quantity}
+   540→                  </p>
+   541→                  {item.codes.map((code, i) => (
+   542→                    <div
+   543→                      key={`${o.id}-${code}-${i}`}
+   544→                      className="flex items-center justify-between gap-2 rounded-lg border border-emerald-400/15 bg-emerald-400/5 px-2.5 py-1.5"
+   545→                    >
+   546→                      <code className="truncate font-mono text-xs font-bold text-emerald-300">
+   547→                        {code}
+   548→                      </code>
+   549→                      <CopyButton value={code} />
+   550→                    </div>
+   551→                  ))}
+   552→                </div>
+   553→              ))}
+   554→              <div className="mt-3 flex justify-end border-t border-white/10 pt-2 text-sm">
+   555→                <span className="text-muted-foreground">Total&nbsp;</span>
+   556→                <span className="font-bold text-white">{formatMoney(o.total)}</span>
+   557→              </div>
+   558→            </div>
+   559→          ))}
+   560→          {orders && orders.length === 0 ? (
+   561→            <div className="rounded-2xl border border-dashed border-white/15 p-8 text-center">
+   562→              <p className="text-3xl">📭</p>
+   563→              <p className="mt-2 text-sm text-muted-foreground">
+   564→                No orders for this email yet.
+   565→              </p>
+   566→            </div>
+   567→          ) : null}
+   568→        </div>
+   569→      </DialogContent>
+   570→    </Dialog>
+   571→  );
+   572→}
+   573→
+   574→/* ================= SELLER CENTER ================= */
+   575→
+   576→const EMOJI_CHOICES = ["🛒", "✨", "🧠", "📺", "📡", "🎵", "🎮", "🔑", "🎨", "🎬", "💳", "📦"];
+   577→
+   578→export function SellerDialog() {
+   579→  const open = useMarketplace((s) => s.sellerOpen);
+   580→  const setOpen = useMarketplace((s) => s.setSellerOpen);
+   581→  const catalog = useMarketplace((s) => s.catalog);
+   582→  const loadCatalog = useMarketplace((s) => s.loadCatalog);
+   583→  const { toast } = useToast();
+   584→
+   585→  const [title, setTitle] = useState("");
+   586→  const [categorySlug, setCategorySlug] = useState("");
+   587→  const [price, setPrice] = useState("");
+   588→  const [stock, setStock] = useState("25");
+   589→  const [emoji, setEmoji] = useState("📦");
+   590→  const [shortDescription, setShortDescription] = useState("");
+   591→  const [description, setDescription] = useState("");
+   592→  const [features, setFeatures] = useState("");
+   593→  const [deliveryType, setDeliveryType] = useState("INSTANT");
+   594→  const [submitting, setSubmitting] = useState(false);
+   595→
+   596→  useEffect(() => {
+   597→    if (open && !categorySlug && catalog && catalog.categories.length > 0) {
+   598→      setCategorySlug(catalog.categories[0].slug);
+   599→    }
+   600→  }, [open, catalog, categorySlug]);
+   601→
+   602→  const publish = async () => {
+   603→    if (submitting) return;
+   604→    setSubmitting(true);
+   605→    try {
+   606→      const res = await fetch("/api/products", {
+   607→        method: "POST",
+   608→        headers: { "Content-Type": "application/json" },
+   609→        body: JSON.stringify({
+   610→          title,
+   611→          categorySlug,
+   612→          price: Number(price),
+   613→          stock: Number(stock),
+   614→          emoji,
+   615→          shortDescription,
+   616→          description,
+   617→          features,
+   618→          deliveryType,
+   619→          sellerName: "Rudeusu",
+   620→        }),
+   621→      });
+   622→      const data = await res.json();
+   623→      if (!res.ok) throw new Error(data.error ?? "Could not publish");
+   624→      toast({
+   625→        title: "Product published 🎉",
+   626→        description: `${data.product.title} is now live in the catalog.`,
+   627→      });
+   628→      await loadCatalog();
+   629→      setOpen(false);
+   630→      setTitle("");
+   631→      setPrice("");
+   632→      setShortDescription("");
+   633→      setDescription("");
+   634→      setFeatures("");
+   635→    } catch (e) {
+   636→      toast({
+   637→        title: "Publish failed",
+   638→        description: e instanceof Error ? e.message : "Try again",
+   639→        variant: "destructive",
+   640→      });
+   641→    } finally {
+   642→      setSubmitting(false);
+   643→    }
+   644→  };
+   645→
+   646→  return (
+   647→    <Dialog open={open} onOpenChange={setOpen}>
+   648→      <DialogContent className="max-h-[92vh] overflow-y-auto border-white/10 bg-[oklch(0.16_0.02_305)] sm:max-w-xl">
+   649→        <DialogHeader>
+   650→          <DialogTitle className="flex items-center gap-2 text-xl text-white">
+   651→            🏪 Seller Center
+   652→          </DialogTitle>
+   653→          <DialogDescription>
+   654→            List a digital product — it appears in the catalog instantly. Zero listing
+   655→            fee, 5% commission when sold.
+   656→          </DialogDescription>
+   657→        </DialogHeader>
+   658→
+   659→        <div className="grid gap-3.5">
+   660→          <div className="grid gap-1.5">
+   661→            <Label htmlFor="sp-title" className="text-sm">Product title</Label>
+   662→            <Input
+   663→              id="sp-title"
+   664→              value={title}
+   665→              onChange={(e) => setTitle(e.target.value)}
+   666→              placeholder="e.g. Adobe Creative Cloud — 6 Months"
+   667→              className="h-10 border-white/10 bg-white/5"
+   668→            />
+   669→          </div>
+   670→
+   671→          <div className="grid grid-cols-2 gap-3">
+   672→            <div className="grid gap-1.5">
+   673→              <Label className="text-sm">Category</Label>
+   674→              <Select value={categorySlug} onValueChange={setCategorySlug}>
+   675→                <SelectTrigger className="h-10 border-white/10 bg-white/5">
+   676→                  <SelectValue placeholder="Pick category" />
+   677→                </SelectTrigger>
+   678→                <SelectContent>
+   679→                  {(catalog?.categories ?? []).map((c) => (
+   680→                    <SelectItem key={c.slug} value={c.slug}>
+   681→                      {c.emoji} {c.name}
+   682→                    </SelectItem>
+   683→                  ))}
+   684→                </SelectContent>
+   685→              </Select>
+   686→            </div>
+   687→            <div className="grid gap-1.5">
+   688→              <Label className="text-sm">Delivery</Label>
+   689→              <Select value={deliveryType} onValueChange={setDeliveryType}>
+   690→                <SelectTrigger className="h-10 border-white/10 bg-white/5">
+   691→                  <SelectValue />
+   692→                </SelectTrigger>
+   693→                <SelectContent>
+   694→                  <SelectItem value="INSTANT">⚡ Instant (automatic)</SelectItem>
+   695→                  <SelectItem value="MANUAL">🕐 Manual (≤ 12h)</SelectItem>
+   696→                </SelectContent>
+   697→              </Select>
+   698→            </div>
+   699→          </div>
+   700→
+   701→          <div className="grid grid-cols-2 gap-3">
+   702→            <div className="grid gap-1.5">
+   703→              <Label htmlFor="sp-price" className="text-sm">Price (USD)</Label>
+   704→              <Input
+   705→                id="sp-price"
+   706→                type="number"
+   707→                min="0.5"
+   708→                step="0.01"
+   709→                value={price}
+   710→                onChange={(e) => setPrice(e.target.value)}
+   711→                placeholder="9.99"
+   712→                className="h-10 border-white/10 bg-white/5"
+   713→              />
+   714→            </div>
+   715→            <div className="grid gap-1.5">
+   716→              <Label htmlFor="sp-stock" className="text-sm">Quantity available</Label>
+   717→              <Input
+   718→                id="sp-stock"
+   719→                type="number"
+   720→                min="1"
+   721→                value={stock}
+   722→                onChange={(e) => setStock(e.target.value)}
+   723→                className="h-10 border-white/10 bg-white/5"
+   724→              />
+   725→            </div>
+   726→          </div>
+   727→
+   728→          <div className="grid gap-1.5">
+   729→            <Label className="text-sm">Cover icon</Label>
+   730→            <div className="flex flex-wrap gap-1.5">
+   731→              {EMOJI_CHOICES.map((e) => (
+   732→                <button
+   733→                  key={e}
+   734→                  type="button"
+   735→                  onClick={() => setEmoji(e)}
+   736→                  className={`h-9 w-9 rounded-xl text-lg transition ${
+   737→                    emoji === e
+   738→                      ? "bg-fuchsia-500/25 ring-2 ring-fuchsia-400/60"
+   739→                      : "bg-white/5 hover:bg-white/10"
+   740→                  }`}
+   741→                >
+   742→                  {e}
+   743→                </button>
+   744→              ))}
+   745→            </div>
+   746→          </div>
+   747→
+   748→          <div className="grid gap-1.5">
+   749→            <Label htmlFor="sp-short" className="text-sm">Short description (card teaser)</Label>
+   750→            <Input
+   751→              id="sp-short"
+   752→              value={shortDescription}
+   753→              onChange={(e) => setShortDescription(e.target.value)}
+   754→              placeholder="One sentence buyers see on the card"
+   755→              className="h-10 border-white/10 bg-white/5"
+   756→            />
+   757→          </div>
+   758→
+   759→          <div className="grid gap-1.5">
+   760→            <Label htmlFor="sp-desc" className="text-sm">Full description</Label>
+   761→            <Textarea
+   762→              id="sp-desc"
+   763→              value={description}
+   764→              onChange={(e) => setDescription(e.target.value)}
+   765→              placeholder="Explain exactly what the buyer receives, how activation works and warranty terms..."
+   766→              className="min-h-20 border-white/10 bg-white/5"
+   767→            />
+   768→          </div>
+   769→
+   770→          <div className="grid gap-1.5">
+   771→            <Label htmlFor="sp-features" className="text-sm">
+   772→              What the buyer gets (one per line)
+   773→            </Label>
+   774→            <Textarea
+   775→              id="sp-features"
+   776→              value={features}
+   777→              onChange={(e) => setFeatures(e.target.value)}
+   778→              placeholder={"License key\nStep-by-step activation guide\nLifetime warranty"}
+   779→              className="min-h-16 border-white/10 bg-white/5"
+   780→            />
+   781→          </div>
+   782→
+   783→          <Button
+   784→            onClick={publish}
+   785→            disabled={submitting}
+   786→            className="h-11 rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 font-bold text-white shadow-lg shadow-fuchsia-500/25"
+   787→          >
+   788→            {submitting ? (
+   789→              <>
+   790→                <Loader2 className="h-4 w-4 animate-spin" /> Publishing...
+   791→              </>
+   792→            ) : (
+   793→              "Publish product"
+   794→            )}
+   795→          </Button>
+   796→        </div>
+   797→      </DialogContent>
+   798→    </Dialog>
+   799→  );
+   800→}
+   801→
+   802→/* Footer X-close helper retained for a11y tests */
+   803→export function CloseButton({ onClick }: { onClick: () => void }) {
+   804→  return (
+   805→    <Button variant="ghost" size="icon" onClick={onClick} aria-label="Close">
+   806→      <X className="h-4 w-4" />
+   807→    </Button>
+   808→  );
+   809→}
+   810→

@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import {
   BadgeCheck,
   ChevronLeft,
-  Clock3,
+  Clock,
   Lock,
   MessageSquare,
   Minus,
@@ -23,6 +23,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import type { ApiReview } from "@/lib/types";
+import { useI18n } from "@/lib/i18n";
 import { useMarketplace } from "./store";
 import { BadgePill, CoverTile, Price, Stars } from "./ui-bits";
 
@@ -33,6 +34,7 @@ export function ProductDetail() {
   const addToCart = useMarketplace((s) => s.addToCart);
   const setCartOpen = useMarketplace((s) => s.setCartOpen);
   const { toast } = useToast();
+  const { t } = useI18n();
 
   const slug = view.name === "product" ? view.slug : null;
   const product = catalog?.products.find((p) => p.slug === slug) ?? null;
@@ -85,13 +87,13 @@ export function ProductDetail() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Could not save review");
       setReviews((prev) => [data.review as ApiReview, ...prev]);
-      toast({ title: "Review published ⭐", description: "Thanks for helping other buyers!" });
+      toast({ title: t("detail.reviewPublished"), description: t("detail.reviewThanks") });
       setAuthor("");
       setComment("");
       setRating(5);
     } catch (e) {
       toast({
-        title: "Review not saved",
+        title: t("detail.reviewFailed"),
         description: e instanceof Error ? e.message : "Please try again.",
         variant: "destructive",
       });
@@ -111,8 +113,8 @@ export function ProductDetail() {
         onClick={goHome}
         className="mb-5 flex items-center gap-1.5 text-sm font-semibold text-muted-foreground transition hover:text-fuchsia-200"
       >
-        <ChevronLeft className="h-4 w-4" />
-        Back to marketplace
+        <ChevronLeft className="h-4 w-4 rtl:rotate-180" />
+        {t("detail.back")}
       </button>
 
       <div className="grid items-start gap-6 lg:grid-cols-[1fr_400px]">
@@ -125,7 +127,7 @@ export function ProductDetail() {
               className="h-56 w-full sm:h-64"
               emojiClassName="text-8xl"
             />
-            <div className="absolute left-4 top-4 flex gap-2">
+            <div className="absolute start-4 top-4 flex gap-2">
               {product.badge ? <BadgePill badge={product.badge} /> : null}
               <span className="rounded-full bg-black/45 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-white backdrop-blur">
                 {product.categoryName}
@@ -144,11 +146,12 @@ export function ProductDetail() {
               <span className="flex items-center gap-1.5">
                 <Stars rating={product.rating} />
                 <b className="text-foreground">{product.rating.toFixed(1)}</b>
-                ({product.ratingCount} ratings)
+                {t("detail.ratings", { n: product.ratingCount })}
               </span>
-              <span>· {product.sold.toLocaleString()} sold</span>
+              <span>· {t("card.sold", { n: product.sold.toLocaleString() })}</span>
               <span className="flex items-center gap-1 text-emerald-300">
-                <Zap className="h-3.5 w-3.5" /> {product.deliveryType === "INSTANT" ? "Instant delivery" : "Delivery ≤ 12h"}
+                <Zap className="h-3.5 w-3.5" />
+                {product.deliveryType === "INSTANT" ? t("detail.instant") : t("detail.manual")}
               </span>
             </div>
           </div>
@@ -156,14 +159,14 @@ export function ProductDetail() {
           <Tabs defaultValue="about" className="mt-6">
             <TabsList className="h-11 justify-start gap-1 rounded-2xl border border-white/10 bg-white/[0.04] p-1">
               <TabsTrigger value="about" className="rounded-xl px-4 data-[state=active]:bg-white/10">
-                Description
+                {t("detail.tabAbout")}
               </TabsTrigger>
               <TabsTrigger value="included" className="rounded-xl px-4 data-[state=active]:bg-white/10">
-                What you get
+                {t("detail.tabIncluded")}
               </TabsTrigger>
               <TabsTrigger value="reviews" className="rounded-xl px-4 data-[state=active]:bg-white/10">
-                <MessageSquare className="mr-1.5 inline h-3.5 w-3.5" />
-                Reviews ({reviews.length})
+                <MessageSquare className="me-1.5 inline h-3.5 w-3.5" />
+                {t("detail.tabReviews", { n: reviews.length })}
               </TabsTrigger>
             </TabsList>
 
@@ -175,7 +178,7 @@ export function ProductDetail() {
                 {product.requirements ? (
                   <div className="mt-4 rounded-xl border border-amber-300/20 bg-amber-400/10 p-4">
                     <p className="text-xs font-bold uppercase tracking-wide text-amber-300">
-                      Requirements
+                      {t("detail.requirements")}
                     </p>
                     <p className="mt-1 text-sm text-foreground/85">{product.requirements}</p>
                   </div>
@@ -202,13 +205,13 @@ export function ProductDetail() {
                   <p className="text-5xl font-black text-white">{product.rating.toFixed(1)}</p>
                   <Stars rating={product.rating} size="lg" className="mt-2 justify-center" />
                   <p className="mt-2 text-xs text-muted-foreground">
-                    {product.ratingCount.toLocaleString()} verified ratings
+                    {t("detail.ratingsVerified", { n: product.ratingCount.toLocaleString() })}
                   </p>
                 </div>
 
                 <div className="space-y-4">
                   {/* review list */}
-                  <div className="nice-scroll max-h-80 space-y-3 overflow-y-auto pr-1">
+                  <div className="nice-scroll max-h-80 space-y-3 overflow-y-auto pe-1">
                     {reviewsLoading
                       ? Array.from({ length: 3 }).map((_, i) => (
                           <Skeleton key={i} className="h-20 rounded-2xl bg-white/5" />
@@ -223,7 +226,8 @@ export function ProductDetail() {
                                 {r.author}
                                 {r.verified ? (
                                   <span className="flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold uppercase text-emerald-300">
-                                    <BadgeCheck className="h-3 w-3" /> verified purchase
+                                    <BadgeCheck className="h-3 w-3" />
+                                    {t("detail.verifiedPurchase")}
                                   </span>
                                 ) : null}
                               </p>
@@ -236,14 +240,14 @@ export function ProductDetail() {
                         ))}
                     {!reviewsLoading && reviews.length === 0 ? (
                       <p className="rounded-2xl border border-dashed border-white/15 p-6 text-center text-sm text-muted-foreground">
-                        No written reviews yet — be the first!
+                        {t("detail.noReviews")}
                       </p>
                     ) : null}
                   </div>
 
                   {/* review form */}
                   <div className="rounded-2xl border border-white/10 bg-card/70 p-4">
-                    <p className="mb-3 text-sm font-bold text-foreground">Leave a review</p>
+                    <p className="mb-3 text-sm font-bold text-foreground">{t("detail.leaveReview")}</p>
                     <div className="flex flex-wrap items-center gap-2">
                       {[1, 2, 3, 4, 5].map((v) => (
                         <button
@@ -263,13 +267,13 @@ export function ProductDetail() {
                       <Input
                         value={author}
                         onChange={(e) => setAuthor(e.target.value)}
-                        placeholder="Your name"
+                        placeholder={t("detail.yourName")}
                         className="h-10 border-white/10 bg-white/5"
                       />
                       <Textarea
                         value={comment}
                         onChange={(e) => setComment(e.target.value)}
-                        placeholder="How was the product and the delivery?"
+                        placeholder={t("detail.reviewPlaceholder")}
                         className="min-h-20 border-white/10 bg-white/5"
                       />
                       <Button
@@ -277,7 +281,7 @@ export function ProductDetail() {
                         disabled={submitting}
                         className="h-10 w-fit rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white"
                       >
-                        {submitting ? "Publishing..." : "Publish review"}
+                        {submitting ? t("detail.publishing") : t("detail.publishReview")}
                       </Button>
                     </div>
                   </div>
@@ -293,20 +297,24 @@ export function ProductDetail() {
             <Price price={product.price} oldPrice={product.oldPrice} size="lg" />
             <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
               <span
-                className={`inline-block h-2 w-2 rounded-full ${out ? "bg-rose-400" : product.stock < 20 ? "bg-amber-400" : "bg-emerald-400"}`}
+                className={`inline-block h-2 w-2 rounded-full ${
+                  out ? "bg-rose-400" : product.stock < 20 ? "bg-amber-400" : "bg-emerald-400"
+                }`}
               />
-              {out ? "Sold out — restocking" : `${product.stock} in stock`} ·{" "}
-              {product.deliveryType === "INSTANT" ? "auto-delivery" : "up to 12h"}
+              {out
+                ? t("detail.soldOutRestock")
+                : t("detail.inStockN", { n: product.stock })}{" "}
+              · {product.deliveryType === "INSTANT" ? t("detail.autoDelivery") : t("detail.upTo12h")}
             </p>
 
             <div className="mt-4 flex items-center gap-3">
-              <span className="text-sm font-semibold text-muted-foreground">Qty</span>
+              <span className="text-sm font-semibold text-muted-foreground">{t("detail.qty")}</span>
               <div className="flex items-center rounded-full border border-white/10 bg-white/5">
                 <button
                   onClick={() => setQty((q) => Math.max(1, q - 1))}
                   disabled={qty <= 1}
                   className="flex h-9 w-9 items-center justify-center rounded-full transition hover:bg-white/10 disabled:opacity-40"
-                  aria-label="Decrease quantity"
+                  aria-label={t("cart.decrease")}
                 >
                   <Minus className="h-3.5 w-3.5" />
                 </button>
@@ -315,7 +323,7 @@ export function ProductDetail() {
                   onClick={() => setQty((q) => Math.min(Math.max(product.stock, 1), 10, q + 1))}
                   disabled={out || qty >= Math.min(product.stock, 10)}
                   className="flex h-9 w-9 items-center justify-center rounded-full transition hover:bg-white/10 disabled:opacity-40"
-                  aria-label="Increase quantity"
+                  aria-label={t("cart.increase")}
                 >
                   <Plus className="h-3.5 w-3.5" />
                 </button>
@@ -327,14 +335,14 @@ export function ProductDetail() {
                 disabled={out}
                 onClick={() => {
                   if (addToCart(product, qty)) {
-                    toast({ title: "Added to cart 🛒", description: product.title });
+                    toast({ title: t("card.addedTitle"), description: product.title });
                     setCartOpen(true);
                   }
                 }}
                 className="h-11 gap-2 rounded-2xl border border-fuchsia-400/30 bg-fuchsia-500/10 text-sm font-bold text-fuchsia-100 hover:bg-fuchsia-500/20"
               >
                 <ShoppingCart className="h-4 w-4" />
-                Add to cart
+                {t("detail.addToCart")}
               </Button>
               <Button
                 disabled={out}
@@ -346,26 +354,26 @@ export function ProductDetail() {
                 className="h-11 rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 text-sm font-bold text-white shadow-lg shadow-fuchsia-500/25 hover:from-violet-400 hover:to-fuchsia-400"
               >
                 <Zap className="h-4 w-4" />
-                Buy now — instant delivery
+                {t("detail.buyNow")}
               </Button>
             </div>
 
             <ul className="mt-4 space-y-2 border-t border-white/10 pt-4 text-[13px] text-muted-foreground">
               <li className="flex items-center gap-2">
                 <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-400" />
-                Money-back guarantee if goods are not as described
+                {t("detail.guarantee")}
               </li>
               <li className="flex items-center gap-2">
                 <RefreshCcw className="h-4 w-4 shrink-0 text-emerald-400" />
-                Free replacement warranty included
+                {t("detail.warranty")}
               </li>
               <li className="flex items-center gap-2">
                 <Lock className="h-4 w-4 shrink-0 text-emerald-400" />
-                Secure escrow payment — card, PayPal, crypto
+                {t("detail.escrow")}
               </li>
               <li className="flex items-center gap-2">
-                <Clock3 className="h-4 w-4 shrink-0 text-emerald-400" />
-                Support replies in under 5 minutes, 24/7
+                <Clock className="h-4 w-4 shrink-0 text-emerald-400" />
+                {t("detail.support")}
               </li>
             </ul>
 
@@ -380,11 +388,11 @@ export function ProductDetail() {
                   {product.sellerName}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  ⭐ {product.sellerRating.toFixed(1)} · {product.sellerSales.toLocaleString()} sales
+                  ⭐ {product.sellerRating.toFixed(1)} · {product.sellerSales.toLocaleString()} {t("detail.sold")}
                 </p>
               </div>
               <span className="flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] font-bold uppercase text-emerald-300">
-                <BadgeCheck className="h-3 w-3" /> verified
+                <BadgeCheck className="h-3 w-3" /> {t("detail.verified")}
               </span>
             </div>
           </div>

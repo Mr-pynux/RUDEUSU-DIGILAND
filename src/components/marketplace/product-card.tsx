@@ -5,6 +5,7 @@ import { ShoppingCart, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import type { ApiProduct } from "@/lib/types";
+import { useI18n } from "@/lib/i18n";
 import { useMarketplace } from "./store";
 import { BadgePill, CoverTile, Price, Stars } from "./ui-bits";
 
@@ -12,6 +13,7 @@ export function ProductCard({ product }: { product: ApiProduct }) {
   const addToCart = useMarketplace((s) => s.addToCart);
   const openProduct = useMarketplace((s) => s.openProduct);
   const { toast } = useToast();
+  const { t } = useI18n();
 
   const out = product.stock <= 0;
 
@@ -25,8 +27,8 @@ export function ProductCard({ product }: { product: ApiProduct }) {
     >
       <button
         onClick={() => openProduct(product.slug)}
-        className="relative block text-left focus-visible:outline-none"
-        aria-label={`View ${product.title}`}
+        className="relative block text-start focus-visible:outline-none"
+        aria-label={t("card.view", { title: product.title })}
       >
         <CoverTile
           emoji={product.emoji}
@@ -34,13 +36,13 @@ export function ProductCard({ product }: { product: ApiProduct }) {
           className="h-36 w-full"
           emojiClassName="text-6xl transition-transform duration-300 group-hover:scale-110"
         />
-        <div className="absolute left-3 top-3 flex flex-col gap-1.5">
+        <div className="absolute start-3 top-3 flex flex-col gap-1.5">
           {product.badge ? <BadgePill badge={product.badge} /> : null}
         </div>
         {out ? (
           <div className="absolute inset-0 flex items-center justify-center bg-black/55 backdrop-blur-[2px]">
             <span className="rounded-full bg-rose-500/90 px-3 py-1 text-xs font-bold uppercase tracking-wide text-white">
-              Sold out
+              {t("card.soldOut")}
             </span>
           </div>
         ) : null}
@@ -54,7 +56,7 @@ export function ProductCard({ product }: { product: ApiProduct }) {
 
         <button
           onClick={() => openProduct(product.slug)}
-          className="line-clamp-2 text-left text-[15px] font-semibold leading-snug text-foreground transition-colors hover:text-fuchsia-200 focus-visible:outline-none"
+          className="line-clamp-2 text-start text-[15px] font-semibold leading-snug text-foreground transition-colors hover:text-fuchsia-200 focus-visible:outline-none"
         >
           {product.title}
         </button>
@@ -64,7 +66,7 @@ export function ProductCard({ product }: { product: ApiProduct }) {
           <span className="font-semibold text-foreground">{product.rating.toFixed(1)}</span>
           <span className="flex items-center gap-1">
             <Users className="h-3 w-3" />
-            {product.sold.toLocaleString()} sold
+            {t("card.sold", { n: product.sold.toLocaleString() })}
           </span>
         </div>
 
@@ -76,7 +78,7 @@ export function ProductCard({ product }: { product: ApiProduct }) {
           <div>
             <Price price={product.price} oldPrice={product.oldPrice} />
             <p className="mt-0.5 text-[11px] text-muted-foreground">
-              {out ? "Restocking soon" : `In stock: ${product.stock}`}
+              {out ? t("card.restocking") : t("card.inStock", { n: product.stock })}
             </p>
           </div>
           <Button
@@ -85,16 +87,14 @@ export function ProductCard({ product }: { product: ApiProduct }) {
             onClick={() => {
               const ok = addToCart(product);
               toast({
-                title: ok ? "Added to cart 🛒" : "Out of stock",
-                description: ok
-                  ? `${product.title}`
-                  : "This product is sold out right now.",
+                title: ok ? t("card.addedTitle") : t("card.outTitle"),
+                description: ok ? product.title : t("card.outText"),
               });
             }}
             className="h-9 shrink-0 gap-1.5 rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 px-3.5 text-[13px] font-semibold text-white shadow-md shadow-fuchsia-500/20 hover:from-violet-400 hover:to-fuchsia-400"
           >
             <ShoppingCart className="h-4 w-4" />
-            Add
+            {t("card.add")}
           </Button>
         </div>
       </div>
@@ -121,6 +121,7 @@ export function SkeletonCard() {
 
 export function ProductGrid({ products }: { products: ApiProduct[] }) {
   const catalogLoading = useMarketplace((s) => s.catalogLoading);
+  const { t } = useI18n();
 
   if (catalogLoading) {
     return (
@@ -136,11 +137,8 @@ export function ProductGrid({ products }: { products: ApiProduct[] }) {
     return (
       <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-white/15 bg-card/50 py-16 text-center">
         <span className="text-4xl">🧭</span>
-        <p className="font-semibold text-foreground">Nothing matches your filters</p>
-        <p className="max-w-sm text-sm text-muted-foreground">
-          Try a different keyword, clear the category filter, or browse another
-          category from the list above.
-        </p>
+        <p className="font-semibold text-foreground">{t("catalog.emptyTitle")}</p>
+        <p className="max-w-sm text-sm text-muted-foreground">{t("catalog.emptyText")}</p>
       </div>
     );
   }

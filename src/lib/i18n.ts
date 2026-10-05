@@ -1,0 +1,710 @@
+"use client";
+
+import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
+
+export type Lang = "en" | "ar";
+
+/* ------------------------------------------------------------------ */
+/* English dictionary (source of truth — keys are typed from this)     */
+/* ------------------------------------------------------------------ */
+
+const en = {
+  // header
+  "header.searchPlaceholder": "Search Gemini Pro, IPTV, Spotify, Windows keys...",
+  "header.cart": "Cart",
+  "header.myOrders": "My orders",
+  "header.startSelling": "Start selling",
+  "header.admin": "Admin",
+  "header.language": "العربية",
+  "header.stripInstant": "Instant automatic delivery — goods arrive in seconds",
+  "header.stripProtection": "🛡️ Buyer protection",
+  "header.stripSupport": "💬 24/7 support",
+  "header.stripHome": "🏠 Marketplace",
+  "header.stripProduct": "🔎 Product",
+  "header.openCart": "Open cart, {n} items",
+  "header.openOrders": "My orders",
+
+  // hero
+  "hero.badge": "The digital goods marketplace — plati-style, reinvented",
+  "hero.titlePrefix": "Buy",
+  "hero.highlight": "Gemini Pro, GPT Plus, IPTV",
+  "hero.titleSuffix": "& 500+ digital goods with instant delivery",
+  "hero.subtitle":
+    "RUDEUSU DIGILAND connects verified sellers with buyers worldwide. Pay by card, PayPal or crypto — your activation codes, accounts and subscriptions land in your inbox within seconds, protected by our money-back guarantee.",
+  "hero.searchPlaceholder": "What are you looking for today?",
+  "hero.searchBtn": "Search",
+  "hero.statProducts": "Products",
+  "hero.statSold": "Goods sold",
+  "hero.statRating": "Avg. rating",
+  "hero.statOrders": "Orders",
+  "hero.deliveredNow": "⚡ Delivered just now",
+  "hero.avgDelivery": "Average delivery time: 9 seconds",
+
+  // trust strip
+  "trust.instantTitle": "Instant delivery",
+  "trust.instantText": "Automated goods arrive in seconds — 24/7",
+  "trust.protectionTitle": "Buyer protection",
+  "trust.protectionText": "Money-back guarantee on every order",
+  "trust.sellersTitle": "Verified sellers",
+  "trust.sellersText": "Ratings & reviews from real buyers",
+  "trust.supportTitle": "Live support",
+  "trust.supportText": "Real humans in chat, any time",
+
+  // flash deals
+  "deals.title": "🔥 Flash deals",
+  "deals.subtitle": "biggest discounts today",
+
+  // catalog
+  "catalog.title": "Browse the catalog",
+  "catalog.count": "{n} product{n_s}",
+  "catalog.in": "in {name}",
+  "catalog.matching": "matching “{q}”",
+  "catalog.allGoods": "All goods",
+  "catalog.inStockOnly": "In stock only",
+  "catalog.filterPlaceholder": "Filter results...",
+  "catalog.clear": "Clear",
+  "catalog.sort": "Sort by",
+  "catalog.sortPopular": "🔥 Most popular",
+  "catalog.sortPriceAsc": "💵 Price: low → high",
+  "catalog.sortPriceDesc": "💰 Price: high → low",
+  "catalog.sortRating": "⭐ Highest rated",
+  "catalog.sortNewest": "🆕 Newest",
+  "catalog.emptyTitle": "Nothing matches your filters",
+  "catalog.emptyText":
+    "Try a different keyword, clear the category filter, or browse another category from the list above.",
+
+  // product card
+  "card.sold": "{n} sold",
+  "card.inStock": "In stock: {n}",
+  "card.restocking": "Restocking soon",
+  "card.soldOut": "Sold out",
+  "card.add": "Add",
+  "card.addedTitle": "Added to cart 🛒",
+  "card.outTitle": "Out of stock",
+  "card.outText": "This product is sold out right now.",
+  "card.view": "View {title}",
+
+  // how it works
+  "how.title": "How RUDEUSU DIGILAND works",
+  "how.subtitle": "From click to activation in under a minute — the plati-marketplace experience, modernized.",
+  "how.s1Title": "Choose your goods",
+  "how.s1Text":
+    "Browse verified sellers across AI subscriptions, IPTV, music, gaming and software keys. Every listing shows real ratings, stock and delivery speed.",
+  "how.s2Title": "Pay your way",
+  "how.s2Text":
+    "Checkout with card, PayPal, crypto or Apple Pay. Funds are held by escrow until the order is confirmed — sellers never see your card details.",
+  "how.s3Title": "Receive in seconds",
+  "how.s3Text":
+    "Activation codes and accounts are delivered instantly to your screen and email. Something wrong? The warranty covers free replacement or refund.",
+  "how.ctaTitle": "Got digital goods to sell?",
+  "how.ctaText": "List your first product in 2 minutes — no listing fee, 5% only when sold.",
+  "how.ctaBtn": "Open seller center",
+
+  // product detail
+  "detail.back": "Back to marketplace",
+  "detail.ratings": "({n} ratings)",
+  "detail.sold": "sold",
+  "detail.instant": "Instant delivery",
+  "detail.manual": "Delivery ≤ 12h",
+  "detail.tabAbout": "Description",
+  "detail.tabIncluded": "What you get",
+  "detail.tabReviews": "Reviews ({n})",
+  "detail.requirements": "Requirements",
+  "detail.noReviews": "No written reviews yet — be the first!",
+  "detail.ratingsVerified": "{n} verified ratings",
+  "detail.leaveReview": "Leave a review",
+  "detail.yourName": "Your name",
+  "detail.reviewPlaceholder": "How was the product and the delivery?",
+  "detail.publishReview": "Publish review",
+  "detail.publishing": "Publishing...",
+  "detail.reviewPublished": "Review published ⭐",
+  "detail.reviewThanks": "Thanks for helping other buyers!",
+  "detail.reviewFailed": "Review not saved",
+  "detail.qty": "Qty",
+  "detail.addToCart": "Add to cart",
+  "detail.buyNow": "Buy now — instant delivery",
+  "detail.guarantee": "Money-back guarantee if goods are not as described",
+  "detail.warranty": "Free replacement warranty included",
+  "detail.escrow": "Secure escrow payment — card, PayPal, crypto",
+  "detail.support": "Support replies in under 5 minutes, 24/7",
+  "detail.verified": "verified",
+  "detail.inStockN": "{n} in stock",
+  "detail.soldOutRestock": "Sold out — restocking",
+  "detail.autoDelivery": "auto-delivery",
+  "detail.upTo12h": "up to 12h",
+  "detail.verifiedPurchase": "verified purchase",
+  "detail.starsAria": "Rated {n} out of 5",
+
+  // cart
+  "cart.title": "Your cart",
+  "cart.desc": "Digital goods — delivered to your email right after payment.",
+  "cart.emptyTitle": "Your cart is empty",
+  "cart.emptyText": "Add AI subscriptions, IPTV or keys and check out in seconds.",
+  "cart.subtotal": "Subtotal",
+  "cart.fee": "Service fee (5% + $0.30)",
+  "cart.total": "Total",
+  "cart.checkout": "Checkout — {total}",
+  "cart.decrease": "Decrease quantity",
+  "cart.increase": "Increase quantity",
+  "cart.remove": "Remove {title} from cart",
+
+  // checkout
+  "checkout.title": "Secure checkout",
+  "checkout.desc": "Goods are delivered to your email + on screen immediately after payment.",
+  "checkout.email": "Delivery email",
+  "checkout.method": "Payment method",
+  "checkout.card": "Credit / Debit Card",
+  "checkout.cardHint": "Visa · Mastercard",
+  "checkout.paypal": "PayPal",
+  "checkout.paypalHint": "Buyer protection",
+  "checkout.crypto": "Crypto",
+  "checkout.cryptoHint": "BTC · USDT · TON",
+  "checkout.applepay": "Apple Pay",
+  "checkout.applepayHint": "One-tap checkout",
+  "checkout.serviceFee": "Service fee",
+  "checkout.paying": "Processing payment...",
+  "checkout.pay": "🔒 Pay {total}",
+  "checkout.demoNote": "Demo checkout — no real money is charged. escrow protected · SSL secured",
+  "checkout.failed": "Payment failed",
+
+  // success
+  "success.title": "Payment successful — goods delivered! 🎉",
+  "success.order": "Order",
+  "success.copySent": "a copy was sent to",
+  "success.qty": "Qty {n} · {seller} · {price} each",
+  "success.howToActivate": "How to activate",
+  "success.myPurchases": "My purchases",
+  "success.continue": "Continue shopping",
+  "success.paidVia": "Paid via",
+  "success.copyCode": "Copy code {n}",
+
+  // orders dialog
+  "orders.title": "My purchases",
+  "orders.desc": "Enter the email you used at checkout to re-open your codes anytime.",
+  "orders.find": "Find orders",
+  "orders.noneTitle": "No orders yet",
+  "orders.noneText": "Nothing found for {email}",
+  "orders.failed": "Lookup failed",
+  "orders.empty": "No orders for this email yet.",
+  "orders.total": "Total",
+
+  // seller dialog
+  "seller.title": "🏪 Seller Center",
+  "seller.desc":
+    "List a digital product — it appears in the catalog instantly. Zero listing fee, 5% commission when sold.",
+  "seller.productTitle": "Product title",
+  "seller.titlePlaceholder": "e.g. Adobe Creative Cloud — 6 Months",
+  "seller.category": "Category",
+  "seller.pickCategory": "Pick category",
+  "seller.delivery": "Delivery",
+  "seller.instant": "⚡ Instant (automatic)",
+  "seller.manual": "🕐 Manual (≤ 12h)",
+  "seller.price": "Price (USD)",
+  "seller.stock": "Quantity available",
+  "seller.cover": "Cover icon",
+  "seller.short": "Short description (card teaser)",
+  "seller.shortPlaceholder": "One sentence buyers see on the card",
+  "seller.full": "Full description",
+  "seller.fullPlaceholder":
+    "Explain exactly what the buyer receives, how activation works and warranty terms...",
+  "seller.features": "What the buyer gets (one per line)",
+  "seller.featuresPlaceholder": "License key\nStep-by-step activation guide\nLifetime warranty",
+  "seller.publish": "Publish product",
+  "seller.publishing": "Publishing...",
+  "seller.published": "Product published 🎉",
+  "seller.publishedDesc": "{title} is now live in the catalog.",
+  "seller.failed": "Publish failed",
+
+  // footer
+  "footer.about":
+    "The instant-delivery marketplace for AI subscriptions, IPTV, streaming, gaming and software keys. Buyers are protected, sellers get paid.",
+  "footer.categories": "Categories",
+  "footer.buyers": "For buyers",
+  "footer.purchases": "My purchases & codes",
+  "footer.protection": "Buyer protection",
+  "footer.refund": "Refund policy",
+  "footer.faq": "FAQ",
+  "footer.sellers": "For sellers",
+  "footer.startSelling": "Start selling",
+  "footer.rules": "Seller rules",
+  "footer.payouts": "Payouts",
+  "footer.support": "24/7 support",
+  "footer.comingSoon": "{what} — coming soon",
+  "footer.comingSoonText": "This demo marketplace keeps growing.",
+  "footer.copyright": "© {year} RUDEUSU DIGILAND — all digital goods are demo listings.",
+  "footer.badges": "⚡ Instant delivery · 🛡️ Escrow protected · 🌍 Serving 140+ countries",
+  "footer.admin": "Admin panel",
+
+  // copy button
+  "copy.copied": "Copied",
+  "copy.copy": "Copy",
+
+  /* ---------------- admin panel ---------------- */
+  "admin.title": "Admin panel",
+  "admin.loginTitle": "Admin sign in",
+  "admin.loginDesc": "Sign in to manage products, codes and orders of RUDEUSU DIGILAND.",
+  "admin.password": "Password",
+  "admin.signIn": "Sign in",
+  "admin.signingIn": "Signing in...",
+  "admin.wrongPassword": "Wrong password. Try again.",
+  "admin.signOut": "Sign out",
+  "admin.backToStore": "Back to store",
+  "admin.tabProducts": "Products",
+  "admin.tabCodes": "Codes",
+  "admin.tabOrders": "Orders",
+  "admin.statProducts": "Total products",
+  "admin.statOrders": "Total orders",
+  "admin.statRevenue": "Revenue",
+  "admin.statCodesAvailable": "Codes available",
+  "admin.statCodesSold": "Codes sold",
+  "admin.addProduct": "Add product",
+  "admin.addProductWithCodes": "Add product + codes",
+  "admin.editProduct": "Edit product",
+  "admin.updateProduct": "Update product",
+  "admin.createProduct": "Create product",
+  "admin.creating": "Creating...",
+  "admin.saving": "Saving...",
+  "admin.save": "Save",
+  "admin.cancel": "Cancel",
+  "admin.delete": "Delete",
+  "admin.edit": "Edit",
+  "admin.deleteConfirm": "Delete this product? All its codes and reviews will be removed.",
+  "admin.productDeleted": "Product deleted",
+  "admin.active": "Active",
+  "admin.hidden": "Hidden",
+  "admin.searchPlaceholder": "Search products...",
+  "admin.tableProduct": "Product",
+  "admin.tableCategory": "Category",
+  "admin.tablePrice": "Price",
+  "admin.tableStock": "Stock",
+  "admin.tableSold": "Sold",
+  "admin.tableCodes": "Codes ready",
+  "admin.tableStatus": "Status",
+  "admin.tableActions": "Actions",
+  "admin.brand": "Brand",
+  "admin.productTitle": "Product title",
+  "admin.category": "Category",
+  "admin.price": "Price",
+  "admin.stock": "Stock",
+  "admin.short": "Short description (card teaser)",
+  "admin.fullDesc": "Full description",
+  "admin.requirements": "Requirements",
+  "admin.codePrefix": "Code prefix (e.g. GEM)",
+  "admin.instructions": "Activation instructions",
+  "admin.badge": "Badge (optional)",
+  "admin.oldPrice": "Old price (optional)",
+  "admin.uploadedCodes": "Activation codes (one per line — buyers receive these first)",
+  "admin.uploadedCodesHint": "Paste your real codes/keys here. The first buyer gets line 1, the second gets line 2, and so on. If you leave this empty, buyers receive auto-generated codes instead.",
+  "admin.codesPlaceholder": "GEM-AAAA-BBBB-CCCC\nGEM-DDDD-EEEE-FFFF\n...",
+  "admin.editHint": "Update price, stock, badge, texts and delivery settings of this product.",
+  "admin.createHint": "Fill in the product details, paste your activation codes, and it goes live in the catalog instantly.",
+  "admin.saveFailed": "Save failed",
+  "admin.createFailed": "Create failed",
+  "admin.availableCodes": "Available codes",
+  "admin.soldCodes": "Sold codes",
+  "admin.productCreated": "Product created 🎉",
+  "admin.productCreatedDesc": "{n} codes uploaded and ready for instant delivery.",
+  "admin.productUpdated": "Product updated",
+  "admin.codesFor": "Codes for",
+  "admin.pickProduct": "Pick a product",
+  "admin.addCodes": "Add codes",
+  "admin.adding": "Adding...",
+  "admin.codesAdded": "{n} codes added",
+  "admin.codesDuplicate": "{n} duplicate/empty lines skipped",
+  "admin.available": "Available",
+  "admin.soldCode": "Sold",
+  "admin.noCodes": "No codes yet — paste codes above. Buyers of this product currently receive auto-generated codes.",
+  "admin.deleteCode": "Delete unsold code",
+  "admin.orderBuyer": "Buyer",
+  "admin.orderPayment": "Payment",
+  "admin.orderDate": "Date",
+  "admin.orderItems": "Items",
+  "admin.noOrders": "No orders yet.",
+  "admin.noProducts": "No products yet — create your first one.",
+  "admin.gradient": "Cover gradient",
+  "admin.loginHint": "Owner access only.",
+
+  // misc
+  "misc.loading": "Loading...",
+} as const;
+
+export type DictKey = keyof typeof en;
+type Dict = Record<DictKey, string>;
+
+/* ------------------------------------------------------------------ */
+/* Arabic dictionary                                                   */
+/* ------------------------------------------------------------------ */
+
+const ar: Dict = {
+  // header
+  "header.searchPlaceholder": "ابحث عن Gemini Pro أو IPTV أو Spotify أو مفاتيح Windows...",
+  "header.cart": "السلة",
+  "header.myOrders": "طلباتي",
+  "header.startSelling": "ابدأ البيع",
+  "header.admin": "الإدارة",
+  "header.language": "English",
+  "header.stripInstant": "تسليم تلقائي فوري — تصل السلع خلال ثوانٍ",
+  "header.stripProtection": "🛡️ حماية المشتري",
+  "header.stripSupport": "💬 دعم 24/7",
+  "header.stripHome": "🏠 السوق",
+  "header.stripProduct": "🔎 المنتج",
+  "header.openCart": "افتح السلة، {n} عنصر",
+  "header.openOrders": "طلباتي",
+
+  // hero
+  "hero.badge": "سوق البضائع الرقمية — تجربة عصرية بأسلوب Plati",
+  "hero.titlePrefix": "اشترِ",
+  "hero.highlight": "Gemini Pro وGPT Plus وIPTV",
+  "hero.titleSuffix": "وأكثر من 500 منتج رقمي بتسليم فوري",
+  "hero.subtitle":
+    "يربط RUDEUSU DIGILAND البائعين الموثوقين بالمشترين حول العالم. ادفع بالبطاقة أو PayPal أو العملات الرقمية — تصلك أكواد التفعيل والحسابات والاشتراكات إلى بريدك خلال ثوانٍ، مع ضمان استرداد الأموال.",
+  "hero.searchPlaceholder": "ما الذي تبحث عنه اليوم؟",
+  "hero.searchBtn": "بحث",
+  "hero.statProducts": "المنتجات",
+  "hero.statSold": "سلع مباعة",
+  "hero.statRating": "متوسط التقييم",
+  "hero.statOrders": "الطلبات",
+  "hero.deliveredNow": "⚡ تم التسليم للتو",
+  "hero.avgDelivery": "متوسط وقت التسليم: 9 ثوانٍ",
+
+  // trust strip
+  "trust.instantTitle": "تسليم فوري",
+  "trust.instantText": "تصل السلع الآلية خلال ثوانٍ — على مدار الساعة",
+  "trust.protectionTitle": "حماية المشتري",
+  "trust.protectionText": "ضمان استرداد الأموال على كل طلب",
+  "trust.sellersTitle": "بائعون موثوقون",
+  "trust.sellersText": "تقييمات ومراجعات من مشترين حقيقيين",
+  "trust.supportTitle": "دعم مباشر",
+  "trust.supportText": "بشر حقيقيون في الدردشة في أي وقت",
+
+  // flash deals
+  "deals.title": "🔥 عروض خاطفة",
+  "deals.subtitle": "أكبر الخصومات اليوم",
+
+  // catalog
+  "catalog.title": "تصفح الكتالوج",
+  "catalog.count": "{n} منتج",
+  "catalog.in": "في {name}",
+  "catalog.matching": "مطابق لـ «{q}»",
+  "catalog.allGoods": "كل السلع",
+  "catalog.inStockOnly": "المتوفر فقط",
+  "catalog.filterPlaceholder": "تصفية النتائج...",
+  "catalog.clear": "مسح",
+  "catalog.sort": "ترتيب حسب",
+  "catalog.sortPopular": "🔥 الأكثر شعبية",
+  "catalog.sortPriceAsc": "💵 السعر: من الأقل إلى الأعلى",
+  "catalog.sortPriceDesc": "💰 السعر: من الأعلى إلى الأقل",
+  "catalog.sortRating": "⭐ الأعلى تقييماً",
+  "catalog.sortNewest": "🆕 الأحدث",
+  "catalog.emptyTitle": "لا شيء يطابق عوامل التصفية",
+  "catalog.emptyText": "جرّب كلمة أخرى أو أزل تصفية الفئة أو تصفح فئة أخرى من القائمة أعلاه.",
+
+  // product card
+  "card.sold": "تم بيع {n}",
+  "card.inStock": "المتوفر: {n}",
+  "card.restocking": "يعاد التوريد قريباً",
+  "card.soldOut": "نفدت الكمية",
+  "card.add": "أضف",
+  "card.addedTitle": "تمت الإضافة إلى السلة 🛒",
+  "card.outTitle": "نفدت الكمية",
+  "card.outText": "هذا المنتج نفدت كميته حالياً.",
+  "card.view": "عرض {title}",
+
+  // how it works
+  "how.title": "كيف يعمل RUDEUSU DIGILAND",
+  "how.subtitle": "من النقرة إلى التفعيل في أقل من دقيقة — تجربة السوق بأسلوب Plati بصيغة حديثة.",
+  "how.s1Title": "اختر سلعتك",
+  "how.s1Text":
+    "تصفح البائعين الموثوقين عبر اشتراكات الذكاء الاصطناعي وIPTV والموسيقى والألعاب ومفاتيح البرامج. كل إعلان يعرض تقييمات حقيقية والمخزون وسرعة التسليم.",
+  "how.s2Title": "ادفع بالطريقة التي تناسبك",
+  "how.s2Text":
+    "أتمم الشراء بالبطاقة أو PayPal أو العملات الرقمية أو Apple Pay. تُحفظ الأموال بالضمان حتى تأكيد الطلب — البائعون لا يرون بيانات بطاقتك أبداً.",
+  "how.s3Title": "استلم خلال ثوانٍ",
+  "how.s3Text":
+    "تُسلَّم أكواد التفعيل والحسابات فوراً إلى شاشتك وبريدك. حدث خطأ ما؟ الضمان يشمل الاستبدال المجاني أو الاسترداد.",
+  "how.ctaTitle": "لديك منتجات رقمية للبيع؟",
+  "how.ctaText": "أدرج منتجك الأول خلال دقيقتين — بلا رسوم إدراج، و5% فقط عند البيع.",
+  "how.ctaBtn": "افتح مركز البائعين",
+
+  // product detail
+  "detail.back": "العودة إلى السوق",
+  "detail.ratings": "({n} تقييم)",
+  "detail.sold": "مبيع",
+  "detail.instant": "تسليم فوري",
+  "detail.manual": "التسليم خلال 12 ساعة",
+  "detail.tabAbout": "الوصف",
+  "detail.tabIncluded": "ما ستحصل عليه",
+  "detail.tabReviews": "المراجعات ({n})",
+  "detail.requirements": "المتطلبات",
+  "detail.noReviews": "لا مراجعات مكتوبة بعد — كن أول من يراجع!",
+  "detail.ratingsVerified": "{n} تقييم موثق",
+  "detail.leaveReview": "اترك مراجعة",
+  "detail.yourName": "اسمك",
+  "detail.reviewPlaceholder": "كيف كان المنتج والتسليم؟",
+  "detail.publishReview": "نشر المراجعة",
+  "detail.publishing": "جارٍ النشر...",
+  "detail.reviewPublished": "تم نشر المراجعة ⭐",
+  "detail.reviewThanks": "شكراً لمساعدة المشترين الآخرين!",
+  "detail.reviewFailed": "لم يتم حفظ المراجعة",
+  "detail.qty": "الكمية",
+  "detail.addToCart": "أضف إلى السلة",
+  "detail.buyNow": "اشترِ الآن — تسليم فوري",
+  "detail.guarantee": "ضمان استرداد الأموال إذا كانت السلع مختلفة عن الوصف",
+  "detail.warranty": "ضمان استبدال مجاني مشمول",
+  "detail.escrow": "دفع آمن عبر الضمان — بطاقة، PayPal، عملات رقمية",
+  "detail.support": "الدعم يرد خلال أقل من 5 دقائق، 24/7",
+  "detail.verified": "موثوق",
+  "detail.inStockN": "{n} في المخزون",
+  "detail.soldOutRestock": "نفدت الكمية — يعاد التوريد",
+  "detail.autoDelivery": "تسليم آلي",
+  "detail.upTo12h": "خلال 12 ساعة كحد أقصى",
+  "detail.verifiedPurchase": "شراء موثق",
+  "detail.starsAria": "التقييم {n} من 5",
+
+  // cart
+  "cart.title": "سلتك",
+  "cart.desc": "منتجات رقمية — تصل إلى بريدك الإلكتروني مباشرة بعد الدفع.",
+  "cart.emptyTitle": "سلتك فارغة",
+  "cart.emptyText": "أضف اشتراكات الذكاء الاصطناعي أو IPTV أو المفاتيح وأتمم الشراء في ثوانٍ.",
+  "cart.subtotal": "المجموع الفرعي",
+  "cart.fee": "رسوم الخدمة (5% + 0.30$)",
+  "cart.total": "الإجمالي",
+  "cart.checkout": "إتمام الشراء — {total}",
+  "cart.decrease": "تقليل الكمية",
+  "cart.increase": "زيادة الكمية",
+  "cart.remove": "إزالة {title} من السلة",
+
+  // checkout
+  "checkout.title": "إتمام شراء آمن",
+  "checkout.desc": "تُسلَّم البضائع إلى بريدك الإلكتروني وعلى الشاشة فوراً بعد الدفع.",
+  "checkout.email": "بريد التسليم",
+  "checkout.method": "طريقة الدفع",
+  "checkout.card": "بطاقة ائتمان / خصم",
+  "checkout.cardHint": "فيزا · ماستركارد",
+  "checkout.paypal": "PayPal",
+  "checkout.paypalHint": "حماية المشتري",
+  "checkout.crypto": "عملات رقمية",
+  "checkout.cryptoHint": "BTC · USDT · TON",
+  "checkout.applepay": "Apple Pay",
+  "checkout.applepayHint": "دفع بلمسة واحدة",
+  "checkout.serviceFee": "رسوم الخدمة",
+  "checkout.paying": "جارٍ معالجة الدفع...",
+  "checkout.pay": "🔒 ادفع {total}",
+  "checkout.demoNote": "شراء تجريبي — لا يتم خصم أموال حقيقية. محمي بالضمان · مؤمّن بـ SSL",
+  "checkout.failed": "فشل الدفع",
+
+  // success
+  "success.title": "تم الدفع بنجاح — تم تسليم البضائع! 🎉",
+  "success.order": "طلب",
+  "success.copySent": "أُرسلت نسخة إلى",
+  "success.qty": "الكمية {n} · {seller} · {price} للواحدة",
+  "success.howToActivate": "كيفية التفعيل",
+  "success.myPurchases": "مشترياتي",
+  "success.continue": "متابعة التسوق",
+  "success.paidVia": "تم الدفع عبر",
+  "success.copyCode": "نسخ الكود {n}",
+
+  // orders dialog
+  "orders.title": "مشترياتي",
+  "orders.desc": "أدخل البريد الإلكتروني الذي استخدمته عند الشراء لاستعادة أكوادك في أي وقت.",
+  "orders.find": "إيجاد الطلبات",
+  "orders.noneTitle": "لا طلبات بعد",
+  "orders.noneText": "لا يوجد شيء لـ {email}",
+  "orders.failed": "فشل البحث",
+  "orders.empty": "لا طلبات لهذا البريد بعد.",
+  "orders.total": "الإجمالي",
+
+  // seller dialog
+  "seller.title": "🏪 مركز البائع",
+  "seller.desc": "أدرج منتجاً رقمياً — يظهر في الكتالوج فوراً. بلا رسوم إدراج، وعمولة 5% عند البيع فقط.",
+  "seller.productTitle": "عنوان المنتج",
+  "seller.titlePlaceholder": "مثال: Adobe Creative Cloud — 6 أشهر",
+  "seller.category": "الفئة",
+  "seller.pickCategory": "اختر الفئة",
+  "seller.delivery": "التسليم",
+  "seller.instant": "⚡ فوري (تلقائي)",
+  "seller.manual": "🕐 يدوي (خلال 12 ساعة)",
+  "seller.price": "السعر (دولار)",
+  "seller.stock": "الكمية المتاحة",
+  "seller.cover": "أيقونة الغلاف",
+  "seller.short": "وصف قصير (بطاقة المنتج)",
+  "seller.shortPlaceholder": "جملة واحدة يراها المشترون على البطاقة",
+  "seller.full": "الوصف الكامل",
+  "seller.fullPlaceholder": "اشرح بدقة ما يستلمه المشتري وكيف تعمل عملية التفعيل وشروط الضمان...",
+  "seller.features": "ما يحصل عليه المشتري (سطر لكل عنصر)",
+  "seller.featuresPlaceholder": "مفتاح ترخيص\nدليل تفعيل خطوة بخطوة\nضمان مدى الحياة",
+  "seller.publish": "نشر المنتج",
+  "seller.publishing": "جارٍ النشر...",
+  "seller.published": "تم نشر المنتج 🎉",
+  "seller.publishedDesc": "{title} متاح الآن في الكتالوج.",
+  "seller.failed": "فشل النشر",
+
+  // footer
+  "footer.about":
+    "سوق التسليم الفوري لاشتراكات الذكاء الاصطناعي وIPTV والبث والألعاب ومفاتيح البرامج. المشتري محمي والبائع يتقاضى أرباحه.",
+  "footer.categories": "الفئات",
+  "footer.buyers": "للمشترين",
+  "footer.purchases": "مشترياتي وأكوادي",
+  "footer.protection": "حماية المشتري",
+  "footer.refund": "سياسة الاسترداد",
+  "footer.faq": "الأسئلة الشائعة",
+  "footer.sellers": "للبائعين",
+  "footer.startSelling": "ابدأ البيع",
+  "footer.rules": "قواعد البائع",
+  "footer.payouts": "المدفوعات",
+  "footer.support": "دعم 24/7",
+  "footer.comingSoon": "{what} — قريباً",
+  "footer.comingSoonText": "هذا السوق التجريبي في نمو مستمر.",
+  "footer.copyright": "© {year} RUDEUSU DIGILAND — جميع المنتجات الرقمية عروض تجريبية.",
+  "footer.badges": "⚡ تسليم فوري · 🛡️ محمي بالضمان · 🌍 نخدم أكثر من 140 دولة",
+  "footer.admin": "لوحة الإدارة",
+
+  // copy button
+  "copy.copied": "تم النسخ",
+  "copy.copy": "نسخ",
+
+  /* ---------------- admin panel ---------------- */
+  "admin.title": "لوحة الإدارة",
+  "admin.loginTitle": "تسجيل دخول المدير",
+  "admin.loginDesc": "سجّل الدخول لإدارة منتجات وأكواد وطلبات RUDEUSU DIGILAND.",
+  "admin.password": "كلمة المرور",
+  "admin.signIn": "تسجيل الدخول",
+  "admin.signingIn": "جارٍ تسجيل الدخول...",
+  "admin.wrongPassword": "كلمة المرور خاطئة. حاول مجدداً.",
+  "admin.signOut": "تسجيل الخروج",
+  "admin.backToStore": "العودة إلى المتجر",
+  "admin.tabProducts": "المنتجات",
+  "admin.tabCodes": "الأكواد",
+  "admin.tabOrders": "الطلبات",
+  "admin.statProducts": "إجمالي المنتجات",
+  "admin.statOrders": "إجمالي الطلبات",
+  "admin.statRevenue": "الإيرادات",
+  "admin.statCodesAvailable": "أكواد متاحة",
+  "admin.statCodesSold": "أكواد مباعة",
+  "admin.addProduct": "إضافة منتج",
+  "admin.addProductWithCodes": "إضافة منتج + أكواد",
+  "admin.editProduct": "تعديل المنتج",
+  "admin.updateProduct": "تحديث المنتج",
+  "admin.createProduct": "إنشاء المنتج",
+  "admin.creating": "جارٍ الإنشاء...",
+  "admin.saving": "جارٍ الحفظ...",
+  "admin.save": "حفظ",
+  "admin.cancel": "إلغاء",
+  "admin.delete": "حذف",
+  "admin.edit": "تعديل",
+  "admin.deleteConfirm": "حذف هذا المنتج؟ ستُحذف جميع أكواده ومراجعاته.",
+  "admin.productDeleted": "تم حذف المنتج",
+  "admin.active": "نشط",
+  "admin.hidden": "مخفي",
+  "admin.searchPlaceholder": "ابحث عن منتجات...",
+  "admin.tableProduct": "المنتج",
+  "admin.tableCategory": "الفئة",
+  "admin.tablePrice": "السعر",
+  "admin.tableStock": "المخزون",
+  "admin.tableSold": "مبيع",
+  "admin.tableCodes": "أكواد جاهزة",
+  "admin.tableStatus": "الحالة",
+  "admin.tableActions": "إجراءات",
+  "admin.brand": "العلامة التجارية",
+  "admin.productTitle": "عنوان المنتج",
+  "admin.category": "الفئة",
+  "admin.price": "السعر",
+  "admin.stock": "المخزون",
+  "admin.short": "وصف قصير (بطاقة المنتج)",
+  "admin.fullDesc": "الوصف الكامل",
+  "admin.requirements": "المتطلبات",
+  "admin.codePrefix": "بادئة الكود (مثال: GEM)",
+  "admin.instructions": "تعليمات التفعيل",
+  "admin.badge": "شارة (اختياري)",
+  "admin.oldPrice": "السعر القديم (اختياري)",
+  "admin.uploadedCodes": "أكواد التفعيل (سطر لكل كود — يستلمها المشترون أولاً)",
+  "admin.uploadedCodesHint": "الصق أكوادك الحقيقية هنا. المشتري الأول يحصل على السطر الأول، والثاني على السطر الثاني، وهكذا. إذا تركت هذا الحقل فارغاً فسيحصل المشترون على أكواد تُولَّد تلقائياً.",
+  "admin.codesPlaceholder": "GEM-AAAA-BBBB-CCCC\nGEM-DDDD-EEEE-FFFF\n...",
+  "admin.editHint": "حدّث السعر والمخزون والشارة والنصوص وإعدادات التسليم لهذا المنتج.",
+  "admin.createHint": "املأ تفاصيل المنتج والصق أكواد التفعيل — سيظهر في الكتالوج فوراً.",
+  "admin.saveFailed": "فشل الحفظ",
+  "admin.createFailed": "فشل الإنشاء",
+  "admin.availableCodes": "الأكواد المتاحة",
+  "admin.soldCodes": "الأكواد المباعة",
+  "admin.productCreated": "تم إنشاء المنتج 🎉",
+  "admin.productCreatedDesc": "تم رفع {n} كود وجاهزة للتسليم الفوري.",
+  "admin.productUpdated": "تم تحديث المنتج",
+  "admin.codesFor": "أكواد منتج",
+  "admin.pickProduct": "اختر منتجاً",
+  "admin.addCodes": "إضافة أكواد",
+  "admin.adding": "جارٍ الإضافة...",
+  "admin.codesAdded": "تمت إضافة {n} كود",
+  "admin.codesDuplicate": "تم تخطي {n} سطر مكرر/فارغ",
+  "admin.available": "متاح",
+  "admin.soldCode": "مباع",
+  "admin.noCodes": "لا أكواد بعد — الصق الأكواد أعلاه. مشترو هذا المنتج يحصلون حالياً على أكواد تُولَّد تلقائياً.",
+  "admin.deleteCode": "حذف الكود غير المباع",
+  "admin.orderBuyer": "المشتري",
+  "admin.orderPayment": "الدفع",
+  "admin.orderDate": "التاريخ",
+  "admin.orderItems": "العناصر",
+  "admin.noOrders": "لا طلبات بعد.",
+  "admin.noProducts": "لا منتجات بعد — أنشئ منتجك الأول.",
+  "admin.gradient": "تدرّج الغلاف",
+  "admin.loginHint": "وصول المالك فقط.",
+
+  // misc
+  "misc.loading": "جارٍ التحميل...",
+};
+
+export const translations: Record<Lang, Dict> = { en, ar };
+
+/* ------------------------------------------------------------------ */
+/* Localized category names                                            */
+/* ------------------------------------------------------------------ */
+
+export const categoryNames: Record<string, { en: string; ar: string }> = {
+  "ai-subscriptions": { en: "AI Subscriptions", ar: "اشتراكات الذكاء الاصطناعي" },
+  "iptv-streaming": { en: "IPTV & Streaming", ar: "IPTV والبث المباشر" },
+  "music-premium": { en: "Music Premium", ar: "الموسيقى المميزة" },
+  gaming: { en: "Gaming & Top-ups", ar: "الألعاب والشحن" },
+  "software-keys": { en: "Software Keys", ar: "مفاتيح البرامج" },
+  "creator-tools": { en: "Creator Tools", ar: "أدوات صناعة المحتوى" },
+};
+
+/* ------------------------------------------------------------------ */
+/* Language store (persisted) + hook                                   */
+/* ------------------------------------------------------------------ */
+
+type LangState = { lang: Lang; setLang: (l: Lang) => void };
+
+export const useLangStore = create<LangState>()(
+  persist(
+    (set) => ({
+      lang: "en",
+      setLang: (lang) => set({ lang }),
+    }),
+    {
+      name: "rudeusu-digiland-lang",
+      storage: createJSONStorage(() => localStorage),
+      skipHydration: true,
+    }
+  )
+);
+
+export function useI18n() {
+  const lang = useLangStore((s) => s.lang);
+  const setLang = useLangStore((s) => s.setLang);
+  const dir: "ltr" | "rtl" = lang === "ar" ? "rtl" : "ltr";
+
+  const t = (key: DictKey, vars?: Record<string, string | number>): string => {
+    let str: string = translations[lang][key] ?? translations.en[key];
+    if (vars) {
+      for (const [k, v] of Object.entries(vars)) {
+        str = str.replaceAll(`{${k}}`, String(v));
+      }
+    }
+    return str;
+  };
+
+  const cat = (slug: string, fallback: string): string =>
+    categoryNames[slug]?.[lang] ?? fallback;
+
+  return { lang, dir, t, cat, setLang };
+}

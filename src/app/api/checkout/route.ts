@@ -25,10 +25,7 @@ export async function POST(req: Request) {
     }
 
     if (items.length === 0) {
-      return NextResponse.json(
-        { error: "Your cart is empty." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Your cart is empty." }, { status: 400 });
     }
 
     // Load products and validate stock
@@ -38,6 +35,8 @@ export async function POST(req: Request) {
 
     let subtotal = 0;
     const delivered: DeliveredItem[] = [];
+    const consumedCodeIds: string[] = [];
+    const shortId = generateOrderShortId();
 
     for (const item of items) {
       const product = bySlug.get(item.slug);
@@ -55,7 +54,30 @@ export async function POST(req: Request) {
         );
       }
       subtotal += product.price * qty;
-      const codes = Array.from({ length: qty }, () => generateCode(product.codePrefix));
+
+      // 1) consume uploaded codes from the admin pool first (oldest first)
+      const poolCodes = await db.code.findMany({
+        where: { productId: product.id, sold: false },
+        orderBy: { createdAt: "asc" },
+        take: qty,
+      });
+      // mark them sold with the upcoming order reference
+      for (const c of poolCodes) {
+        await db.code.update({
+          where: { id: c.id },
+          data: { sold: true, orderShortId: shortId },
+        });
+        consumedCodeIds.push(c.id);
+      }
+
+      // 2) fall back to generated codes for the remainder
+      const generated = Array.from(
+        { length: qty - poolCodes.length },
+        () => generateCode(product.codePrefix)
+      );
+
+      const codes = [...poolCodes.map((c) => c.value), ...generated];
+
       delivered.push({
         slug: product.slug,
         title: product.title,
@@ -76,7 +98,7 @@ export async function POST(req: Request) {
     // Create order + update stock/sold atomically enough for demo scale
     const order = await db.order.create({
       data: {
-        shortId: generateOrderShortId(),
+        shortId,
         buyerEmail: email,
         itemsJson: JSON.stringify(delivered),
         subtotal,

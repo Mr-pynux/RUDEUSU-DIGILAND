@@ -46,6 +46,19 @@ model Product {
   reviews          Review[]
   isActive         Boolean  @default(true)
   createdAt        DateTime @default(now())
+  codes            Code[]
+}
+
+model Code {
+  id           String   @id @default(cuid())
+  value        String
+  productId    String
+  product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  sold         Boolean  @default(false)
+  orderShortId String?
+  createdAt    DateTime @default(now())
+
+  @@unique([productId, value])
 }
 
 model Review {

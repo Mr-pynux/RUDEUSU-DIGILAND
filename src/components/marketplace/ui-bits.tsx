@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Check, Copy, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { formatMoney } from "./store";
 
@@ -15,9 +16,14 @@ export function Stars({
   size?: "sm" | "md" | "lg";
   className?: string;
 }) {
-  const px = size === "sm" ? "h-3.5 w-3.5" : size === "md" ? "h-4 w-4" : "h-5 w-5";
+  const { t } = useI18n();
+  const px =
+    size === "sm" ? "h-3.5 w-3.5" : size === "md" ? "h-4 w-4" : "h-5 w-5";
   return (
-    <div className={cn("flex items-center gap-0.5", className)} aria-label={`Rated ${rating} out of 5`}>
+    <div
+      className={cn("flex items-center gap-0.5", className)}
+      aria-label={t("detail.starsAria", { n: rating })}
+    >
       {[1, 2, 3, 4, 5].map((i) => (
         <Star
           key={i}
@@ -43,9 +49,11 @@ export function Price({
   size?: "md" | "lg";
 }) {
   const discount =
-    oldPrice && oldPrice > price ? Math.round(((oldPrice - price) / oldPrice) * 100) : null;
+    oldPrice && oldPrice > price
+      ? Math.round(((oldPrice - price) / oldPrice) * 100)
+      : null;
   return (
-    <div className="flex items-baseline gap-2 flex-wrap">
+    <div className="flex flex-wrap items-baseline gap-2">
       <span
         className={cn(
           "font-bold tracking-tight text-emerald-300",
@@ -72,6 +80,7 @@ export function Price({
 
 export function CopyButton({ value, label }: { value: string; label?: string }) {
   const [copied, setCopied] = useState(false);
+  const { t } = useI18n();
   return (
     <Button
       type="button"
@@ -87,14 +96,14 @@ export function CopyButton({ value, label }: { value: string; label?: string }) 
         setCopied(true);
         setTimeout(() => setCopied(false), 1600);
       }}
-      aria-label={label ?? `Copy ${value}`}
+      aria-label={label ?? t("copy.copy")}
     >
       {copied ? (
         <Check className="h-3.5 w-3.5 text-emerald-400" />
       ) : (
         <Copy className="h-3.5 w-3.5" />
       )}
-      <span className="text-[11px]">{copied ? "Copied" : "Copy"}</span>
+      <span className="text-[11px]">{copied ? t("copy.copied") : t("copy.copy")}</span>
     </Button>
   );
 }

@@ -1,0 +1,810 @@
+     1→     1→"use client";
+     2→     2→
+     3→     3→import { useEffect, useState } from "react";
+     4→     4→import {
+     5→     5→  BadgeCheck,
+     6→     6→  Bitcoin,
+     7→     7→  CreditCard,
+     8→     8→  Loader2,
+     9→     9→  Mail,
+    10→    10→  Minus,
+    11→    11→  PackageOpen,
+    12→    12→  Plus,
+    13→    13→  Smartphone,
+    14→    14→  ShoppingCart,
+    15→    15→  Trash2,
+    16→    16→  Wallet,
+    17→    17→  X,
+    18→    18→  Zap,
+    19→    19→} from "lucide-react";
+    20→    20→import { Button } from "@/components/ui/button";
+    21→    21→import {
+    22→    22→  Dialog,
+    23→    23→  DialogContent,
+    24→    24→  DialogDescription,
+    25→    25→  DialogHeader,
+    26→    26→  DialogTitle,
+    27→    27→} from "@/components/ui/dialog";
+    28→    28→import { Input } from "@/components/ui/input";
+    29→    29→import { Label } from "@/components/ui/label";
+    30→    30→import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+    31→    31→import {
+    32→    32→  Select,
+    33→    33→  SelectContent,
+    34→    34→  SelectItem,
+    35→    35→  SelectTrigger,
+    36→    36→  SelectValue,
+    37→    37→} from "@/components/ui/select";
+    38→    38→import { Separator } from "@/components/ui/separator";
+    39→    39→import {
+    40→    40→  Sheet,
+    41→    41→  SheetContent,
+    42→    42→  SheetDescription,
+    43→    43→  SheetHeader,
+    44→    44→  SheetTitle,
+    45→    45→} from "@/components/ui/sheet";
+    46→    46→import { Textarea } from "@/components/ui/textarea";
+    47→    47→import { useToast } from "@/hooks/use-toast";
+    48→    48→import type { ApiOrder } from "@/lib/types";
+    49→    49→import {
+    50→    50→  cartSubtotal,
+    51→    51→  formatMoney,
+    52→    52→  serviceFee,
+    53→    53→  useMarketplace,
+    54→    54→} from "./store";
+    55→    55→import { CopyButton } from "./ui-bits";
+    56→    56→
+    57→    57→const PAYMENTS = [
+    58→    58→  { id: "card", label: "Credit / Debit Card", hint: "Visa · Mastercard", icon: CreditCard },
+    59→    59→  { id: "paypal", label: "PayPal", hint: "Buyer protection", icon: Wallet },
+    60→    60→  { id: "crypto", label: "Crypto", hint: "BTC · USDT · TON", icon: Bitcoin },
+    61→    61→  { id: "applepay", label: "Apple Pay", hint: "One-tap checkout", icon: Smartphone },
+    62→    62→];
+    63→    63→
+    64→    64→/* ================= CART ================= */
+    65→    65→
+    66→    66→export function CartSheet() {
+    67→    67→  const open = useMarketplace((s) => s.cartOpen);
+    68→    68→  const setOpen = useMarketplace((s) => s.setCartOpen);
+    69→    69→  const cart = useMarketplace((s) => s.cart);
+    70→    70→  const setQty = useMarketplace((s) => s.setQty);
+    71→    71→  const removeFromCart = useMarketplace((s) => s.removeFromCart);
+    72→    72→  const setCheckoutOpen = useMarketplace((s) => s.setCheckoutOpen);
+    73→    73→
+    74→    74→  const subtotal = cartSubtotal(cart);
+    75→    75→  const fee = serviceFee(subtotal);
+    76→    76→
+    77→    77→  return (
+    78→    78→    <Sheet open={open} onOpenChange={setOpen}>
+    79→    79→      <SheetContent side="right" className="flex w-full flex-col gap-0 border-white/10 bg-[oklch(0.15_0.02_305)] p-0 sm:max-w-md">
+    80→    80→        <SheetHeader className="border-b border-white/10 px-5 py-4">
+    81→    81→          <SheetTitle className="flex items-center gap-2 text-lg text-white">
+    82→    82→            <ShoppingCart className="h-5 w-5 text-fuchsia-300" />
+    83→    83→            Your cart
+    84→    84→          </SheetTitle>
+    85→    85→          <SheetDescription className="text-xs text-muted-foreground">
+    86→    86→            Digital goods — delivered to your email right after payment.
+    87→    87→          </SheetDescription>
+    88→    88→        </SheetHeader>
+    89→    89→
+    90→    90→        <div className="nice-scroll flex-1 space-y-3 overflow-y-auto px-5 py-4">
+    91→    91→          {cart.length === 0 ? (
+    92→    92→            <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
+    93→    93→              <span className="text-5xl">🛒</span>
+    94→    94→              <p className="font-semibold text-foreground">Your cart is empty</p>
+    95→    95→              <p className="max-w-60 text-sm text-muted-foreground">
+    96→    96→                Add AI subscriptions, IPTV or keys and check out in seconds.
+    97→    97→              </p>
+    98→    98→            </div>
+    99→    99→          ) : (
+   100→   100→            cart.map((line) => (
+   101→   101→              <div
+   102→   102→                key={line.slug}
+   103→   103→                className="flex gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3"
+   104→   104→              >
+   105→   105→                <span
+   106→   106→                  className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br text-2xl ${line.gradient}`}
+   107→   107→                >
+   108→   108→                  {line.emoji}
+   109→   109→                </span>
+   110→   110→                <div className="min-w-0 flex-1">
+   111→   111→                  <p className="line-clamp-2 text-sm font-semibold leading-snug text-foreground">
+   112→   112→                    {line.title}
+   113→   113→                  </p>
+   114→   114→                  <div className="mt-2 flex items-center justify-between gap-2">
+   115→   115→                    <div className="flex items-center rounded-full border border-white/10 bg-white/5">
+   116→   116→                      <button
+   117→   117→                        onClick={() => setQty(line.slug, line.quantity - 1)}
+   118→   118→                        className="flex h-7 w-7 items-center justify-center rounded-full hover:bg-white/10"
+   119→   119→                        aria-label="Decrease quantity"
+   120→   120→                      >
+   121→   121→                        <Minus className="h-3 w-3" />
+   122→   122→                      </button>
+   123→   123→                      <span className="w-7 text-center text-xs font-bold">{line.quantity}</span>
+   124→   124→                      <button
+   125→   125→                        onClick={() => setQty(line.slug, line.quantity + 1)}
+   126→   126→                        className="flex h-7 w-7 items-center justify-center rounded-full hover:bg-white/10"
+   127→   127→                        aria-label="Increase quantity"
+   128→   128→                      >
+   129→   129→                        <Plus className="h-3 w-3" />
+   130→   130→                      </button>
+   131→   131→                    </div>
+   132→   132→                    <span className="text-sm font-bold text-emerald-300">
+   133→   133→                      {formatMoney(line.price * line.quantity)}
+   134→   134→                    </span>
+   135→   135→                  </div>
+   136→   136→                </div>
+   137→   137→                <button
+   138→   138→                  onClick={() => removeFromCart(line.slug)}
+   139→   139→                  className="h-fit rounded-full p-1.5 text-muted-foreground transition hover:bg-rose-500/15 hover:text-rose-300"
+   140→   140→                  aria-label={`Remove ${line.title} from cart`}
+   141→   141→                >
+   142→   142→                  <Trash2 className="h-4 w-4" />
+   143→   143→                </button>
+   144→   144→              </div>
+   145→   145→            ))
+   146→   146→          )}
+   147→   147→        </div>
+   148→   148→
+   149→   149→        {cart.length > 0 ? (
+   150→   150→          <div className="space-y-3 border-t border-white/10 px-5 py-4">
+   151→   151→            <div className="space-y-1.5 text-sm">
+   152→   152→              <div className="flex justify-between text-muted-foreground">
+   153→   153→                <span>Subtotal</span>
+   154→   154→                <span className="text-foreground">{formatMoney(subtotal)}</span>
+   155→   155→              </div>
+   156→   156→              <div className="flex justify-between text-muted-foreground">
+   157→   157→                <span>Service fee (5% + $0.30)</span>
+   158→   158→                <span className="text-foreground">{formatMoney(fee)}</span>
+   159→   159→              </div>
+   160→   160→              <Separator className="bg-white/10" />
+   161→   161→              <div className="flex justify-between text-base font-bold text-white">
+   162→   162→                <span>Total</span>
+   163→   163→                <span>{formatMoney(subtotal + fee)}</span>
+   164→   164→              </div>
+   165→   165→            </div>
+   166→   166→            <Button
+   167→   167→              onClick={() => {
+   168→   168→                setOpen(false);
+   169→   169→                setCheckoutOpen(true);
+   170→   170→              }}
+   171→   171→              className="h-12 w-full rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 text-[15px] font-bold text-white shadow-lg shadow-fuchsia-500/25 hover:from-violet-400 hover:to-fuchsia-400"
+   172→   172→            >
+   173→   173→              <Zap className="h-4 w-4" />
+   174→   174→              Checkout — {formatMoney(subtotal + fee)}
+   175→   175→            </Button>
+   176→   176→          </div>
+   177→   177→        ) : null}
+   178→   178→      </SheetContent>
+   179→   179→    </Sheet>
+   180→   180→  );
+   181→   181→}
+   182→   182→
+   183→   183→/* ================= CHECKOUT ================= */
+   184→   184→
+   185→   185→export function CheckoutDialog() {
+   186→   186→  const open = useMarketplace((s) => s.checkoutOpen);
+   187→   187→  const setOpen = useMarketplace((s) => s.setCheckoutOpen);
+   188→   188→  const cart = useMarketplace((s) => s.cart);
+   189→   189→  const clearCart = useMarketplace((s) => s.clearCart);
+   190→   190→  const setSuccessOrder = useMarketplace((s) => s.setSuccessOrder);
+   191→   191→  const lastEmail = useMarketplace((s) => s.lastEmail);
+   192→   192→  const setLastEmail = useMarketplace((s) => s.setLastEmail);
+   193→   193→  const { toast } = useToast();
+   194→   194→
+   195→   195→  const [email, setEmail] = useState("");
+   196→   196→  const [payment, setPayment] = useState("card");
+   197→   197→  const [submitting, setSubmitting] = useState(false);
+   198→   198→  const [error, setError] = useState<string | null>(null);
+   199→   199→
+   200→   200→  useEffect(() => {
+   201→   201→    if (open) {
+   202→   202→      setEmail(lastEmail);
+   203→   203→      setError(null);
+   204→   204→    }
+   205→   205→  }, [open, lastEmail]);
+   206→   206→
+   207→   207→  const subtotal = cartSubtotal(cart);
+   208→   208→  const fee = serviceFee(subtotal);
+   209→   209→
+   210→   210→  const pay = async () => {
+   211→   211→    if (submitting) return;
+   212→   212→    setSubmitting(true);
+   213→   213→    setError(null);
+   214→   214→    try {
+   215→   215→      const res = await fetch("/api/checkout", {
+   216→   216→        method: "POST",
+   217→   217→        headers: { "Content-Type": "application/json" },
+   218→   218→        body: JSON.stringify({
+   219→   219→          email,
+   220→   220→          paymentMethod: payment,
+   221→   221→          items: cart.map((l) => ({ slug: l.slug, quantity: l.quantity })),
+   222→   222→        }),
+   223→   223→      });
+   224→   224→      const data = await res.json();
+   225→   225→      if (!res.ok) throw new Error(data.error ?? "Payment failed");
+   226→   226→      setOpen(false);
+   227→   227→      setSuccessOrder(data.order as ApiOrder);
+   228→   228→      setLastEmail(email);
+   229→   229→      clearCart();
+   230→   230→    } catch (e) {
+   231→   231→      const msg = e instanceof Error ? e.message : "Payment failed";
+   232→   232→      setError(msg);
+   233→   233→      toast({ title: "Payment failed", description: msg, variant: "destructive" });
+   234→   234→    } finally {
+   235→   235→      setSubmitting(false);
+   236→   236→    }
+   237→   237→  };
+   238→   238→
+   239→   239→  return (
+   240→   240→    <Dialog open={open} onOpenChange={setOpen}>
+   241→   241→      <DialogContent className="max-h-[92vh] overflow-y-auto border-white/10 bg-[oklch(0.16_0.02_305)] sm:max-w-lg">
+   242→   242→        <DialogHeader>
+   243→   243→          <DialogTitle className="flex items-center gap-2 text-xl text-white">
+   244→   244→            <Zap className="h-5 w-5 text-amber-300" />
+   245→   245→            Secure checkout
+   246→   246→          </DialogTitle>
+   247→   247→          <DialogDescription>
+   248→   248→            Goods are delivered to your email + on screen immediately after payment.
+   249→   249→          </DialogDescription>
+   250→   250→        </DialogHeader>
+   251→   251→
+   252→   252→        <div className="space-y-4">
+   253→   253→          <div className="grid gap-1.5">
+   254→   254→            <Label htmlFor="buyer-email" className="text-sm text-foreground/90">
+   255→   255→              Delivery email
+   256→   256→            </Label>
+   257→   257→            <Input
+   258→   258→              id="buyer-email"
+   259→   259→              type="email"
+   260→   260→              value={email}
+   261→   261→              onChange={(e) => setEmail(e.target.value)}
+   262→   262→              placeholder="you@example.com"
+   263→   263→              className="h-11 border-white/10 bg-white/5"
+   264→   264→            />
+   265→   265→          </div>
+   266→   266→
+   267→   267→          <div className="grid gap-1.5">
+   268→   268→            <Label className="text-sm text-foreground/90">Payment method</Label>
+   269→   269→            <RadioGroup
+   270→   270→              value={payment}
+   271→   271→              onValueChange={setPayment}
+   272→   272→              className="grid grid-cols-2 gap-2"
+   273→   273→            >
+   274→   274→              {PAYMENTS.map((p) => (
+   275→   275→                <Label
+   276→   276→                  key={p.id}
+   277→   277→                  htmlFor={`pay-${p.id}`}
+   278→   278→                  className={`flex cursor-pointer items-center gap-3 rounded-2xl border p-3.5 transition ${
+   279→   279→                    payment === p.id
+   280→   280→                      ? "border-fuchsia-400/60 bg-fuchsia-500/10"
+   281→   281→                      : "border-white/10 bg-white/[0.03] hover:border-white/25"
+   282→   282→                  }`}
+   283→   283→                >
+   284→   284→                  <RadioGroupItem id={`pay-${p.id}`} value={p.id} className="sr-only" />
+   285→   285→                  <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/5 text-fuchsia-200">
+   286→   286→                    <p.icon className="h-5 w-5" />
+   287→   287→                  </span>
+   288→   288→                  <span>
+   289→   289→                    <span className="block text-[13px] font-bold text-foreground">{p.label}</span>
+   290→   290→                    <span className="block text-[11px] text-muted-foreground">{p.hint}</span>
+   291→   291→                  </span>
+   292→   292→                </Label>
+   293→   293→              ))}
+   294→   294→            </RadioGroup>
+   295→   295→          </div>
+   296→   296→
+   297→   297→          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+   298→   298→            {cart.map((l) => (
+   299→   299→              <div key={l.slug} className="flex items-center justify-between gap-2 py-1 text-sm">
+   300→   300→                <span className="min-w-0 flex-1 truncate text-foreground/85">
+   301→   301→                  {l.emoji} {l.title} <span className="text-muted-foreground">×{l.quantity}</span>
+   302→   302→                </span>
+   303→   303→                <span className="font-semibold text-foreground/85">
+   304→   304→                  {formatMoney(l.price * l.quantity)}
+   305→   305→                </span>
+   306→   306→              </div>
+   307→   307→            ))}
+   308→   308→            <Separator className="my-2 bg-white/10" />
+   309→   309→            <div className="flex justify-between py-0.5 text-xs text-muted-foreground">
+   310→   310→              <span>Service fee</span>
+   311→   311→              <span>{formatMoney(fee)}</span>
+   312→   312→            </div>
+   313→   313→            <div className="flex justify-between pt-1 text-base font-bold text-white">
+   314→   314→              <span>Total</span>
+   315→   315→              <span>{formatMoney(subtotal + fee)}</span>
+   316→   316→            </div>
+   317→   317→          </div>
+   318→   318→
+   319→   319→          {error ? (
+   320→   320→            <p className="rounded-xl border border-rose-400/30 bg-rose-500/10 px-3.5 py-2.5 text-sm text-rose-200">
+   321→   321→              {error}
+   322→   322→            </p>
+   323→   323→          ) : null}
+   324→   324→
+   325→   325→          <Button
+   326→   326→            onClick={pay}
+   327→   327→            disabled={submitting || cart.length === 0}
+   328→   328→            className="h-12 w-full rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 text-[15px] font-bold text-white shadow-lg shadow-fuchsia-500/25 hover:from-violet-400 hover:to-fuchsia-400"
+   329→   329→          >
+   330→   330→            {submitting ? (
+   331→   331→              <>
+   332→   332→                <Loader2 className="h-4 w-4 animate-spin" /> Processing payment...
+   333→   333→              </>
+   334→   334→            ) : (
+   335→   335→              <>🔒 Pay {formatMoney(subtotal + fee)}</>
+   336→   336→            )}
+   337→   337→          </Button>
+   338→   338→          <p className="text-center text-[11px] text-muted-foreground">
+   339→   339→            Demo checkout — no real money is charged. escrow protected · SSL secured
+   340→   340→          </p>
+   341→   341→        </div>
+   342→   342→      </DialogContent>
+   343→   343→    </Dialog>
+   344→   344→  );
+   345→   345→}
+   346→   346→
+   347→   347→/* ================= ORDER SUCCESS / DELIVERY ================= */
+   348→   348→
+   349→   349→export function SuccessDialog() {
+   350→   350→  const order = useMarketplace((s) => s.successOrder);
+   351→   351→  const setOrder = useMarketplace((s) => s.setSuccessOrder);
+   352→   352→  const setOrdersOpen = useMarketplace((s) => s.setOrdersOpen);
+   353→   353→  const setCartOpen = useMarketplace((s) => s.setCartOpen);
+   354→   354→
+   355→   355→  return (
+   356→   356→    <Dialog open={!!order} onOpenChange={(o) => !o && setOrder(null)}>
+   357→   357→      <DialogContent className="max-h-[92vh] overflow-y-auto border-white/10 bg-[oklch(0.16_0.02_305)] sm:max-w-xl">
+   358→   358→        {order ? (
+   359→   359→          <>
+   360→   360→            <DialogHeader>
+   361→   361→              <div className="mx-auto mb-1 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/15">
+   362→   362→                <BadgeCheck className="h-9 w-9 text-emerald-400" />
+   363→   363→              </div>
+   364→   364→              <DialogTitle className="text-center text-2xl text-white">
+   365→   365→                Payment successful — goods delivered! 🎉
+   366→   366→              </DialogTitle>
+   367→   367→              <DialogDescription className="text-center">
+   368→   368→                Order <b className="font-mono text-emerald-300">{order.shortId}</b> · a copy was
+   369→   369→                sent to <b className="text-foreground/90">{order.buyerEmail}</b>
+   370→   370→              </DialogDescription>
+   371→   371→            </DialogHeader>
+   372→   372→
+   373→   373→            <div className="space-y-3">
+   374→   374→              {order.items.map((item) => (
+   375→   375→                <div
+   376→   376→                  key={item.slug}
+   377→   377→                  className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"
+   378→   378→                >
+   379→   379→                  <div className="flex items-center gap-3">
+   380→   380→                    <span
+   381→   381→                      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br text-2xl ${item.gradient}`}
+   382→   382→                    >
+   383→   383→                      {item.emoji}
+   384→   384→                    </span>
+   385→   385→                    <div className="min-w-0 flex-1">
+   386→   386→                      <p className="truncate text-sm font-bold text-foreground">{item.title}</p>
+   387→   387→                      <p className="text-xs text-muted-foreground">
+   388→   388→                        Qty {item.quantity} · {item.sellerName} · {formatMoney(item.unitPrice)} each
+   389→   389→                      </p>
+   390→   390→                    </div>
+   391→   391→                  </div>
+   392→   392→                  <div className="mt-3 space-y-2">
+   393→   393→                    {item.codes.map((code, i) => (
+   394→   394→                      <div
+   395→   395→                        key={`${code}-${i}`}
+   396→   396→                        className="flex items-center justify-between gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/5 px-3 py-2"
+   397→   397→                      >
+   398→   398→                        <code className="truncate font-mono text-sm font-bold tracking-wider text-emerald-300">
+   399→   399→                          {code}
+   400→   400→                        </code>
+   401→   401→                        <CopyButton value={code} label={`Copy code ${i + 1}`} />
+   402→   402→                      </div>
+   403→   403→                    ))}
+   404→   404→                  </div>
+   405→   405→                  <details className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+   406→   406→                    <summary className="cursor-pointer text-xs font-bold uppercase tracking-wide text-fuchsia-300">
+   407→   407→                      How to activate
+   408→   408→                    </summary>
+   409→   409→                    <p className="mt-2 whitespace-pre-line text-[13px] leading-relaxed text-muted-foreground">
+   410→   410→                      {item.instructions}
+   411→   411→                    </p>
+   412→   412→                  </details>
+   413→   413→                </div>
+   414→   414→              ))}
+   415→   415→
+   416→   416→              <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm">
+   417→   417→                <span className="text-muted-foreground">
+   418→   418→                  Paid via <b className="uppercase text-foreground/80">{order.paymentMethod}</b>
+   419→   419→                </span>
+   420→   420→                <span className="text-lg font-bold text-white">{formatMoney(order.total)}</span>
+   421→   421→              </div>
+   422→   422→
+   423→   423→              <div className="grid grid-cols-2 gap-2.5 pt-1">
+   424→   424→                <Button
+   425→   425→                  onClick={() => {
+   426→   426→                    setOrder(null);
+   427→   427→                    setOrdersOpen(true);
+   428→   428→                  }}
+   429→   429→                  variant="outline"
+   430→   430→                  className="h-11 rounded-2xl border-white/15 bg-white/5 font-semibold"
+   431→   431→                >
+   432→   432→                  <Mail className="h-4 w-4" />
+   433→   433→                  My purchases
+   434→   434→                </Button>
+   435→   435→                <Button
+   436→   436→                  onClick={() => {
+   437→   437→                    setOrder(null);
+   438→   438→                    setCartOpen(false);
+   439→   439→                  }}
+   440→   440→                  className="h-11 rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 font-bold text-white"
+   441→   441→                >
+   442→   442→                  Continue shopping
+   443→   443→                </Button>
+   444→   444→              </div>
+   445→   445→            </div>
+   446→   446→          </>
+   447→   447→        ) : null}
+   448→   448→      </DialogContent>
+   449→   449→    </Dialog>
+   450→   450→  );
+   451→   451→}
+   452→   452→
+   453→   453→/* ================= MY ORDERS ================= */
+   454→   454→
+   455→   455→type FetchedOrders = { orders: ApiOrder[]; error?: string };
+   456→   456→
+   457→   457→export function OrdersDialog() {
+   458→   458→  const open = useMarketplace((s) => s.ordersOpen);
+   459→   459→  const setOpen = useMarketplace((s) => s.setOrdersOpen);
+   460→   460→  const lastEmail = useMarketplace((s) => s.lastEmail);
+   461→   461→  const { toast } = useToast();
+   462→   462→
+   463→   463→  const [email, setEmail] = useState("");
+   464→   464→  const [orders, setOrders] = useState<ApiOrder[] | null>(null);
+   465→   465→  const [loading, setLoading] = useState(false);
+   466→   466→
+   467→   467→  useEffect(() => {
+   468→   468→    if (open) {
+   469→   469→      setEmail(lastEmail);
+   470→   470→      setOrders(null);
+   471→   471→    }
+   472→   472→  }, [open, lastEmail]);
+   473→   473→
+   474→   474→  const lookup = async () => {
+   475→   475→    if (loading) return;
+   476→   476→    setLoading(true);
+   477→   477→    try {
+   478→   478→      const res = await fetch(`/api/orders?email=${encodeURIComponent(email)}`);
+   479→   479→      const data = (await res.json()) as FetchedOrders;
+   480→   480→      if (!res.ok) throw new Error(data.error ?? "Lookup failed");
+   481→   481→      setOrders(data.orders);
+   482→   482→      if (data.orders.length === 0) {
+   483→   483→        toast({ title: "No orders yet", description: `Nothing found for ${email}` });
+   484→   484→      }
+   485→   485→    } catch (e) {
+   486→   486→      toast({
+   487→   487→        title: "Lookup failed",
+   488→   488→        description: e instanceof Error ? e.message : "Try again",
+   489→   489→        variant: "destructive",
+   490→   490→      });
+   491→   491→    } finally {
+   492→   492→      setLoading(false);
+   493→   493→    }
+   494→   494→  };
+   495→   495→
+   496→   496→  return (
+   497→   497→    <Dialog open={open} onOpenChange={setOpen}>
+   498→   498→      <DialogContent className="max-h-[92vh] overflow-y-auto border-white/10 bg-[oklch(0.16_0.02_305)] sm:max-w-xl">
+   499→   499→        <DialogHeader>
+   500→   500→          <DialogTitle className="flex items-center gap-2 text-xl text-white">
+   501→   501→            <PackageOpen className="h-5 w-5 text-fuchsia-300" />
+   502→   502→            My purchases
+   503→   503→          </DialogTitle>
+   504→   504→          <DialogDescription>
+   505→   505→            Enter the email you used at checkout to re-open your codes anytime.
+   506→   506→          </DialogDescription>
+   507→   507→        </DialogHeader>
+   508→   508→
+   509→   509→        <div className="flex gap-2">
+   510→   510→          <Input
+   511→   511→            type="email"
+   512→   512→            value={email}
+   513→   513→            onChange={(e) => setEmail(e.target.value)}
+   514→   514→            placeholder="you@example.com"
+   515→   515→            className="h-11 border-white/10 bg-white/5"
+   516→   516→            onKeyDown={(e) => e.key === "Enter" && lookup()}
+   517→   517→          />
+   518→   518→          <Button
+   519→   519→            onClick={lookup}
+   520→   520→            disabled={loading}
+   521→   521→            className="h-11 shrink-0 rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 font-bold text-white"
+   522→   522→          >
+   523→   523→            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Find orders"}
+   524→   524→          </Button>
+   525→   525→        </div>
+   526→   526→
+   527→   527→        <div className="nice-scroll max-h-[50vh] space-y-3 overflow-y-auto pr-1">
+   528→   528→          {orders?.map((o) => (
+   529→   529→            <div key={o.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+   530→   530→              <div className="flex flex-wrap items-center justify-between gap-2">
+   531→   531→                <p className="font-mono text-sm font-bold text-emerald-300">{o.shortId}</p>
+   532→   532→                <p className="text-xs text-muted-foreground">
+   533→   533→                  {new Date(o.createdAt).toLocaleString()} · {o.paymentMethod.toUpperCase()}
+   534→   534→                </p>
+   535→   535→              </div>
+   536→   536→              {o.items.map((item) => (
+   537→   537→                <div key={item.slug} className="mt-3 space-y-1.5">
+   538→   538→                  <p className="text-[13px] font-semibold text-foreground/90">
+   539→   539→                    {item.emoji} {item.title} ×{item.quantity}
+   540→   540→                  </p>
+   541→   541→                  {item.codes.map((code, i) => (
+   542→   542→                    <div
+   543→   543→                      key={`${o.id}-${code}-${i}`}
+   544→   544→                      className="flex items-center justify-between gap-2 rounded-lg border border-emerald-400/15 bg-emerald-400/5 px-2.5 py-1.5"
+   545→   545→                    >
+   546→   546→                      <code className="truncate font-mono text-xs font-bold text-emerald-300">
+   547→   547→                        {code}
+   548→   548→                      </code>
+   549→   549→                      <CopyButton value={code} />
+   550→   550→                    </div>
+   551→   551→                  ))}
+   552→   552→                </div>
+   553→   553→              ))}
+   554→   554→              <div className="mt-3 flex justify-end border-t border-white/10 pt-2 text-sm">
+   555→   555→                <span className="text-muted-foreground">Total&nbsp;</span>
+   556→   556→                <span className="font-bold text-white">{formatMoney(o.total)}</span>
+   557→   557→              </div>
+   558→   558→            </div>
+   559→   559→          ))}
+   560→   560→          {orders && orders.length === 0 ? (
+   561→   561→            <div className="rounded-2xl border border-dashed border-white/15 p-8 text-center">
+   562→   562→              <p className="text-3xl">📭</p>
+   563→   563→              <p className="mt-2 text-sm text-muted-foreground">
+   564→   564→                No orders for this email yet.
+   565→   565→              </p>
+   566→   566→            </div>
+   567→   567→          ) : null}
+   568→   568→        </div>
+   569→   569→      </DialogContent>
+   570→   570→    </Dialog>
+   571→   571→  );
+   572→   572→}
+   573→   573→
+   574→   574→/* ================= SELLER CENTER ================= */
+   575→   575→
+   576→   576→const EMOJI_CHOICES = ["🛒", "✨", "🧠", "📺", "📡", "🎵", "🎮", "🔑", "🎨", "🎬", "💳", "📦"];
+   577→   577→
+   578→   578→export function SellerDialog() {
+   579→   579→  const open = useMarketplace((s) => s.sellerOpen);
+   580→   580→  const setOpen = useMarketplace((s) => s.setSellerOpen);
+   581→   581→  const catalog = useMarketplace((s) => s.catalog);
+   582→   582→  const loadCatalog = useMarketplace((s) => s.loadCatalog);
+   583→   583→  const { toast } = useToast();
+   584→   584→
+   585→   585→  const [title, setTitle] = useState("");
+   586→   586→  const [categorySlug, setCategorySlug] = useState("");
+   587→   587→  const [price, setPrice] = useState("");
+   588→   588→  const [stock, setStock] = useState("25");
+   589→   589→  const [emoji, setEmoji] = useState("📦");
+   590→   590→  const [shortDescription, setShortDescription] = useState("");
+   591→   591→  const [description, setDescription] = useState("");
+   592→   592→  const [features, setFeatures] = useState("");
+   593→   593→  const [deliveryType, setDeliveryType] = useState("INSTANT");
+   594→   594→  const [submitting, setSubmitting] = useState(false);
+   595→   595→
+   596→   596→  useEffect(() => {
+   597→   597→    if (open && !categorySlug && catalog && catalog.categories.length > 0) {
+   598→   598→      setCategorySlug(catalog.categories[0].slug);
+   599→   599→    }
+   600→   600→  }, [open, catalog, categorySlug]);
+   601→   601→
+   602→   602→  const publish = async () => {
+   603→   603→    if (submitting) return;
+   604→   604→    setSubmitting(true);
+   605→   605→    try {
+   606→   606→      const res = await fetch("/api/products", {
+   607→   607→        method: "POST",
+   608→   608→        headers: { "Content-Type": "application/json" },
+   609→   609→        body: JSON.stringify({
+   610→   610→          title,
+   611→   611→          categorySlug,
+   612→   612→          price: Number(price),
+   613→   613→          stock: Number(stock),
+   614→   614→          emoji,
+   615→   615→          shortDescription,
+   616→   616→          description,
+   617→   617→          features,
+   618→   618→          deliveryType,
+   619→   619→          sellerName: "Rudeusu",
+   620→   620→        }),
+   621→   621→      });
+   622→   622→      const data = await res.json();
+   623→   623→      if (!res.ok) throw new Error(data.error ?? "Could not publish");
+   624→   624→      toast({
+   625→   625→        title: "Product published 🎉",
+   626→   626→        description: `${data.product.title} is now live in the catalog.`,
+   627→   627→      });
+   628→   628→      await loadCatalog();
+   629→   629→      setOpen(false);
+   630→   630→      setTitle("");
+   631→   631→      setPrice("");
+   632→   632→      setShortDescription("");
+   633→   633→      setDescription("");
+   634→   634→      setFeatures("");
+   635→   635→    } catch (e) {
+   636→   636→      toast({
+   637→   637→        title: "Publish failed",
+   638→   638→        description: e instanceof Error ? e.message : "Try again",
+   639→   639→        variant: "destructive",
+   640→   640→      });
+   641→   641→    } finally {
+   642→   642→      setSubmitting(false);
+   643→   643→    }
+   644→   644→  };
+   645→   645→
+   646→   646→  return (
+   647→   647→    <Dialog open={open} onOpenChange={setOpen}>
+   648→   648→      <DialogContent className="max-h-[92vh] overflow-y-auto border-white/10 bg-[oklch(0.16_0.02_305)] sm:max-w-xl">
+   649→   649→        <DialogHeader>
+   650→   650→          <DialogTitle className="flex items-center gap-2 text-xl text-white">
+   651→   651→            🏪 Seller Center
+   652→   652→          </DialogTitle>
+   653→   653→          <DialogDescription>
+   654→   654→            List a digital product — it appears in the catalog instantly. Zero listing
+   655→   655→            fee, 5% commission when sold.
+   656→   656→          </DialogDescription>
+   657→   657→        </DialogHeader>
+   658→   658→
+   659→   659→        <div className="grid gap-3.5">
+   660→   660→          <div className="grid gap-1.5">
+   661→   661→            <Label htmlFor="sp-title" className="text-sm">Product title</Label>
+   662→   662→            <Input
+   663→   663→              id="sp-title"
+   664→   664→              value={title}
+   665→   665→              onChange={(e) => setTitle(e.target.value)}
+   666→   666→              placeholder="e.g. Adobe Creative Cloud — 6 Months"
+   667→   667→              className="h-10 border-white/10 bg-white/5"
+   668→   668→            />
+   669→   669→          </div>
+   670→   670→
+   671→   671→          <div className="grid grid-cols-2 gap-3">
+   672→   672→            <div className="grid gap-1.5">
+   673→   673→              <Label className="text-sm">Category</Label>
+   674→   674→              <Select value={categorySlug} onValueChange={setCategorySlug}>
+   675→   675→                <SelectTrigger className="h-10 border-white/10 bg-white/5">
+   676→   676→                  <SelectValue placeholder="Pick category" />
+   677→   677→                </SelectTrigger>
+   678→   678→                <SelectContent>
+   679→   679→                  {(catalog?.categories ?? []).map((c) => (
+   680→   680→                    <SelectItem key={c.slug} value={c.slug}>
+   681→   681→                      {c.emoji} {c.name}
+   682→   682→                    </SelectItem>
+   683→   683→                  ))}
+   684→   684→                </SelectContent>
+   685→   685→              </Select>
+   686→   686→            </div>
+   687→   687→            <div className="grid gap-1.5">
+   688→   688→              <Label className="text-sm">Delivery</Label>
+   689→   689→              <Select value={deliveryType} onValueChange={setDeliveryType}>
+   690→   690→                <SelectTrigger className="h-10 border-white/10 bg-white/5">
+   691→   691→                  <SelectValue />
+   692→   692→                </SelectTrigger>
+   693→   693→                <SelectContent>
+   694→   694→                  <SelectItem value="INSTANT">⚡ Instant (automatic)</SelectItem>
+   695→   695→                  <SelectItem value="MANUAL">🕐 Manual (≤ 12h)</SelectItem>
+   696→   696→                </SelectContent>
+   697→   697→              </Select>
+   698→   698→            </div>
+   699→   699→          </div>
+   700→   700→
+   701→   701→          <div className="grid grid-cols-2 gap-3">
+   702→   702→            <div className="grid gap-1.5">
+   703→   703→              <Label htmlFor="sp-price" className="text-sm">Price (USD)</Label>
+   704→   704→              <Input
+   705→   705→                id="sp-price"
+   706→   706→                type="number"
+   707→   707→                min="0.5"
+   708→   708→                step="0.01"
+   709→   709→                value={price}
+   710→   710→                onChange={(e) => setPrice(e.target.value)}
+   711→   711→                placeholder="9.99"
+   712→   712→                className="h-10 border-white/10 bg-white/5"
+   713→   713→              />
+   714→   714→            </div>
+   715→   715→            <div className="grid gap-1.5">
+   716→   716→              <Label htmlFor="sp-stock" className="text-sm">Quantity available</Label>
+   717→   717→              <Input
+   718→   718→                id="sp-stock"
+   719→   719→                type="number"
+   720→   720→                min="1"
+   721→   721→                value={stock}
+   722→   722→                onChange={(e) => setStock(e.target.value)}
+   723→   723→                className="h-10 border-white/10 bg-white/5"
+   724→   724→              />
+   725→   725→            </div>
+   726→   726→          </div>
+   727→   727→
+   728→   728→          <div className="grid gap-1.5">
+   729→   729→            <Label className="text-sm">Cover icon</Label>
+   730→   730→            <div className="flex flex-wrap gap-1.5">
+   731→   731→              {EMOJI_CHOICES.map((e) => (
+   732→   732→                <button
+   733→   733→                  key={e}
+   734→   734→                  type="button"
+   735→   735→                  onClick={() => setEmoji(e)}
+   736→   736→                  className={`h-9 w-9 rounded-xl text-lg transition ${
+   737→   737→                    emoji === e
+   738→   738→                      ? "bg-fuchsia-500/25 ring-2 ring-fuchsia-400/60"
+   739→   739→                      : "bg-white/5 hover:bg-white/10"
+   740→   740→                  }`}
+   741→   741→                >
+   742→   742→                  {e}
+   743→   743→                </button>
+   744→   744→              ))}
+   745→   745→            </div>
+   746→   746→          </div>
+   747→   747→
+   748→   748→          <div className="grid gap-1.5">
+   749→   749→            <Label htmlFor="sp-short" className="text-sm">Short description (card teaser)</Label>
+   750→   750→            <Input
+   751→   751→              id="sp-short"
+   752→   752→              value={shortDescription}
+   753→   753→              onChange={(e) => setShortDescription(e.target.value)}
+   754→   754→              placeholder="One sentence buyers see on the card"
+   755→   755→              className="h-10 border-white/10 bg-white/5"
+   756→   756→            />
+   757→   757→          </div>
+   758→   758→
+   759→   759→          <div className="grid gap-1.5">
+   760→   760→            <Label htmlFor="sp-desc" className="text-sm">Full description</Label>
+   761→   761→            <Textarea
+   762→   762→              id="sp-desc"
+   763→   763→              value={description}
+   764→   764→              onChange={(e) => setDescription(e.target.value)}
+   765→   765→              placeholder="Explain exactly what the buyer receives, how activation works and warranty terms..."
+   766→   766→              className="min-h-20 border-white/10 bg-white/5"
+   767→   767→            />
+   768→   768→          </div>
+   769→   769→
+   770→   770→          <div className="grid gap-1.5">
+   771→   771→            <Label htmlFor="sp-features" className="text-sm">
+   772→   772→              What the buyer gets (one per line)
+   773→   773→            </Label>
+   774→   774→            <Textarea
+   775→   775→              id="sp-features"
+   776→   776→              value={features}
+   777→   777→              onChange={(e) => setFeatures(e.target.value)}
+   778→   778→              placeholder={"License key\nStep-by-step activation guide\nLifetime warranty"}
+   779→   779→              className="min-h-16 border-white/10 bg-white/5"
+   780→   780→            />
+   781→   781→          </div>
+   782→   782→
+   783→   783→          <Button
+   784→   784→            onClick={publish}
+   785→   785→            disabled={submitting}
+   786→   786→            className="h-11 rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 font-bold text-white shadow-lg shadow-fuchsia-500/25"
+   787→   787→          >
+   788→   788→            {submitting ? (
+   789→   789→              <>
+   790→   790→                <Loader2 className="h-4 w-4 animate-spin" /> Publishing...
+   791→   791→              </>
+   792→   792→            ) : (
+   793→   793→              "Publish product"
+   794→   794→            )}
+   795→   795→          </Button>
+   796→   796→        </div>
+   797→   797→      </DialogContent>
+   798→   798→    </Dialog>
+   799→   799→  );
+   800→   800→}
+   801→   801→
+   802→   802→/* Footer X-close helper retained for a11y tests */
+   803→   803→export function CloseButton({ onClick }: { onClick: () => void }) {
+   804→   804→  return (
+   805→   805→    <Button variant="ghost" size="icon" onClick={onClick} aria-label="Close">
+   806→   806→      <X className="h-4 w-4" />
+   807→   807→    </Button>
+   808→   808→  );
+   809→   809→}
+   810→   810→
